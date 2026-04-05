@@ -15,12 +15,12 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // === Firebase 連線設定 ===
 const firebaseConfig = {
-  apiKey: 'AIzaSyD4fOYP3yVyZ4NxXZdSWYZr5Z6Oc_lX8fQ',
-  authDomain: 'dailytasks-4d281.firebaseapp.com',
-  projectId: 'dailytasks-4d281',
-  storageBucket: 'dailytasks-4d281.firebasestorage.app',
-  messagingSenderId: '955083665386',
-  appId: '1:955083665386:web:515c82426eda8210660c93',
+  apiKey: 'AIzaSyAKZA7cAPf9oPHRXHyyGD6gQD-rdFv6QOo',
+  authDomain: 'exam-e84e0.firebaseapp.com',
+  projectId: 'exam-e84e0',
+  storageBucket: 'exam-e84e0.firebasestorage.app',
+  messagingSenderId: '893700721161',
+  appId: '1:893700721161:web:5e881695414539757286d8',
 };
 
 const app = initializeApp(firebaseConfig);
