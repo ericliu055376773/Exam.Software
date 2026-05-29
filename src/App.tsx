@@ -27,6 +27,192 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// === 預設頭貼 SVG 組件（8個，男/女/中性） ===
+const PRESET_AVATARS = [
+  {
+    id: 'avatar_m1', label: '男生1', gender: 'male',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#4FC3F7"/>
+      <circle cx="50" cy="38" r="18" fill="#FFCC80"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#1565C0"/>
+      <circle cx="42" cy="36" r="2.5" fill="#5D4037"/>
+      <circle cx="58" cy="36" r="2.5" fill="#5D4037"/>
+      <path d="M44 44 Q50 49 56 44" stroke="#BF7B5E" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M34 31 Q42 26 50 29 Q58 26 66 31" stroke="#5D4037" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_m2', label: '男生2', gender: 'male',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#FF7043"/>
+      <circle cx="50" cy="38" r="18" fill="#FFAB76"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#212121"/>
+      <circle cx="43" cy="36" r="2.5" fill="#3E2723"/>
+      <circle cx="57" cy="36" r="2.5" fill="#3E2723"/>
+      <path d="M44 44 Q50 48 56 44" stroke="#C97A5A" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <rect x="35" y="22" width="30" height="10" rx="5" fill="#212121"/>
+      <path d="M37 22 Q50 15 63 22" fill="#212121"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_f1', label: '女生1', gender: 'female',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#CE93D8"/>
+      <circle cx="50" cy="38" r="18" fill="#FFCCBC"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#AD1457"/>
+      <circle cx="43" cy="36" r="2.5" fill="#4A148C"/>
+      <circle cx="57" cy="36" r="2.5" fill="#4A148C"/>
+      <path d="M44 44 Q50 49 56 44" stroke="#E8956D" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M32 28 Q50 18 68 28 Q70 35 68 30 Q50 22 32 30 Q30 35 32 28Z" fill="#6A1B9A"/>
+      <ellipse cx="36" cy="42" r="4" ry="3" fill="#F48FB1" opacity="0.6"/>
+      <ellipse cx="64" cy="42" r="4" ry="3" fill="#F48FB1" opacity="0.6"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_f2', label: '女生2', gender: 'female',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#80DEEA"/>
+      <circle cx="50" cy="38" r="18" fill="#FFCCBC"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#00838F"/>
+      <circle cx="43" cy="36" r="2.5" fill="#263238"/>
+      <circle cx="57" cy="36" r="2.5" fill="#263238"/>
+      <path d="M44 44 Q50 49 56 44" stroke="#E8956D" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M32 26 Q50 18 68 26 L66 34 Q50 28 34 34Z" fill="#263238"/>
+      <path d="M28 34 Q32 28 35 38 Q32 42 28 38Z" fill="#263238"/>
+      <path d="M72 34 Q68 28 65 38 Q68 42 72 38Z" fill="#263238"/>
+      <ellipse cx="36" cy="42" r="4" ry="3" fill="#FFAB91" opacity="0.5"/>
+      <ellipse cx="64" cy="42" r="4" ry="3" fill="#FFAB91" opacity="0.5"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_n1', label: '中性1', gender: 'neutral',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#A5D6A7"/>
+      <circle cx="50" cy="38" r="18" fill="#FFE0B2"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#2E7D32"/>
+      <circle cx="43" cy="36" r="2.5" fill="#33691E"/>
+      <circle cx="57" cy="36" r="2.5" fill="#33691E"/>
+      <path d="M44 44 Q50 49 56 44" stroke="#D4905A" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M34 28 Q42 23 50 25 Q58 23 66 28 Q60 20 50 19 Q40 20 34 28Z" fill="#558B2F"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_n2', label: '中性2', gender: 'neutral',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#FFD54F"/>
+      <circle cx="50" cy="38" r="18" fill="#FFCC80"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#E65100"/>
+      <circle cx="43" cy="36" r="3" fill="#4E342E"/>
+      <circle cx="57" cy="36" r="3" fill="#4E342E"/>
+      <path d="M44 44 Q50 50 56 44" stroke="#BF7B5E" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="50" cy="30" r="2" fill="#BF7B5E"/>
+      <path d="M38 28 Q50 22 62 28" stroke="#4E342E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_f3', label: '女生3', gender: 'female',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#F8BBD0"/>
+      <circle cx="50" cy="39" r="18" fill="#FFE0B2"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#C2185B"/>
+      <circle cx="43" cy="37" r="2.5" fill="#4A148C"/>
+      <circle cx="57" cy="37" r="2.5" fill="#4A148C"/>
+      <path d="M44 45 Q50 50 56 45" stroke="#E8956D" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M30 29 Q50 16 70 29 Q68 23 50 19 Q32 23 30 29Z" fill="#880E4F"/>
+      <path d="M50 19 L48 10 Q50 8 52 10 L50 19Z" fill="#880E4F"/>
+      <ellipse cx="36" cy="43" r="5" ry="3.5" fill="#F48FB1" opacity="0.55"/>
+      <ellipse cx="64" cy="43" r="5" ry="3.5" fill="#F48FB1" opacity="0.55"/>
+    </svg>`
+  },
+  {
+    id: 'avatar_m3', label: '男生3', gender: 'male',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#90CAF9"/>
+      <circle cx="50" cy="38" r="18" fill="#D7A87A"/>
+      <ellipse cx="50" cy="80" rx="22" ry="15" fill="#1A237E"/>
+      <circle cx="43" cy="35" r="2.5" fill="#1A237E"/>
+      <circle cx="57" cy="35" r="2.5" fill="#1A237E"/>
+      <path d="M44 44 Q50 48 56 44" stroke="#A0684A" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M33 28 Q50 20 67 28 Q65 22 50 18 Q35 22 33 28Z" fill="#1A237E"/>
+      <path d="M42 44 Q50 50 58 44 Q56 52 50 54 Q44 52 42 44Z" fill="#C4956A"/>
+    </svg>`
+  },
+];
+
+// 頭貼選擇器組件
+const AvatarPicker = ({ currentAvatar, onSelect, onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-4">
+      <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+        <div className="p-6 pb-4 border-b border-gray-100">
+          <div className="flex justify-between items-center">
+            <h3 className="font-black text-xl text-[#1A1A1A]">選擇頭貼</h3>
+            <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gray-500">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 font-bold mt-1">共 8 款 — 男生 / 女生 / 中性</p>
+        </div>
+        <div className="p-6 grid grid-cols-4 gap-4">
+          {PRESET_AVATARS.map((av) => (
+            <button
+              key={av.id}
+              onClick={() => onSelect(av.id)}
+              className={`relative flex flex-col items-center gap-2 group`}
+            >
+              <div className={`w-16 h-16 rounded-full overflow-hidden transition-all duration-200 ${
+                currentAvatar === av.id
+                  ? 'ring-4 ring-[#D85E38] ring-offset-2 scale-110'
+                  : 'ring-2 ring-transparent hover:ring-gray-300 hover:scale-105'
+              }`}
+                dangerouslySetInnerHTML={{ __html: av.svg }}
+              />
+              {currentAvatar === av.id && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#D85E38] rounded-full flex items-center justify-center shadow-sm">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-3 h-3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              )}
+              <span className="text-[9px] font-bold text-gray-400">{av.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="px-6 pb-6">
+          <button
+            onClick={onClose}
+            className="w-full py-3.5 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-lg"
+          >
+            確認選擇
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 取得頭貼SVG的工具函數
+const getAvatarContent = (avatarId, avatarUrl) => {
+  if (avatarId) {
+    const preset = PRESET_AVATARS.find(a => a.id === avatarId);
+    if (preset) return { type: 'svg', content: preset.svg };
+  }
+  if (avatarUrl) return { type: 'img', content: avatarUrl };
+  return null;
+};
+
+// 頭貼顯示組件
+const AvatarDisplay = ({ avatarId, avatarUrl, className = "w-full h-full" }) => {
+  const av = getAvatarContent(avatarId, avatarUrl);
+  if (!av) return null;
+  if (av.type === 'svg') {
+    return <div className={className} dangerouslySetInnerHTML={{ __html: av.content }} />;
+  }
+  return <img src={av.content} className={`${className} object-cover`} />;
+};
+
 // === 座標距離計算 ===
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
@@ -535,6 +721,18 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('exams');
   const [toast, setToast] = useState(null);
 
+  // === App 設定 (標題、Logo) ===
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '' });
+  const [editAppTitle, setEditAppTitle] = useState('');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [showAppConfigModal, setShowAppConfigModal] = useState(false);
+
+  // === 頭貼選擇器狀態 ===
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [avatarPickerTarget, setAvatarPickerTarget] = useState(null);
+  const [regSelectedAvatar, setRegSelectedAvatar] = useState('');
+  const [editEmpSelectedAvatar, setEditEmpSelectedAvatar] = useState('');
+
   const jobRoles = [
     '店長',
     '副店長',
@@ -733,6 +931,14 @@ export default function App() {
       }
     );
 
+    const unsubAppConfig = onSnapshot(
+      doc(db, 'settings', 'appConfig'),
+      (snap) => {
+        if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', ...snap.data() });
+        else setAppConfig({ title: '學習系統', logoUrl: '' });
+      }
+    );
+
     return () => {
       unsubStores();
       unsubExams();
@@ -742,6 +948,7 @@ export default function App() {
       unsubDailyItems();
       unsubIncidents();
       unsubDailyConfig();
+      unsubAppConfig();
     };
   }, []);
 
@@ -841,19 +1048,6 @@ export default function App() {
       }
 
       setIsCheckingGPS(true);
-      let avatarUrl = '';
-      if (regAvatarFile) {
-        showToast('上傳大頭照中...');
-        try {
-          const storageRef = ref(storage, `avatars/pending_${Date.now()}`);
-          await uploadBytes(storageRef, regAvatarFile);
-          avatarUrl = await getDownloadURL(storageRef);
-        } catch (err) {
-          console.error('照片上傳失敗:', err);
-          showToast('照片上傳失敗，仍會送出基本資料');
-        }
-      }
-
       try {
         await addDoc(collection(db, 'pendingAccounts'), {
           name: String(name).trim(),
@@ -864,7 +1058,8 @@ export default function App() {
           hireDate: String(hireDate),
           phone: String(phone).trim(),
           mbti: String(mbti),
-          avatarUrl: avatarUrl,
+          avatarId: regSelectedAvatar || '',
+          avatarUrl: '',
           date: new Date().toISOString().split('T')[0],
           createdAt: Date.now(),
         });
@@ -872,9 +1067,8 @@ export default function App() {
         setAuthMode('login');
         setAuthPassword('');
         setAuthError('');
-        setRegAvatarFile(null);
-        setRegAvatarPreview(null);
-        target.reset(); // 清除表單
+        setRegSelectedAvatar('');
+        target.reset();
       } catch (error) {
         console.error('註冊失敗:', error);
         showToast(
@@ -961,14 +1155,48 @@ export default function App() {
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       if (isEditMode) {
-        setEditEmployeeData({ ...editEmployeeData, avatarUrl: url });
+        setEditEmployeeData({ ...editEmployeeData, avatarUrl: url, avatarId: '' });
       } else {
-        await updateDoc(doc(db, 'employees', empId), { avatarUrl: url });
+        await updateDoc(doc(db, 'employees', empId), { avatarUrl: url, avatarId: '' });
       }
       showToast('大頭照更新成功！');
     } catch (err) {
       showToast('上傳失敗：' + (err.message || '請檢查權限設定！'));
     } finally {
+      e.target.value = null;
+    }
+  }
+
+  async function handlePresetAvatarSelect(avatarId) {
+    if (avatarPickerTarget === 'register') {
+      setRegSelectedAvatar(avatarId);
+    } else if (avatarPickerTarget === 'edit') {
+      setEditEmpSelectedAvatar(avatarId);
+      setEditEmployeeData(prev => ({ ...prev, avatarId: avatarId, avatarUrl: '' }));
+    } else if (avatarPickerTarget) {
+      // 直接更新員工頭貼
+      await updateDoc(doc(db, 'employees', avatarPickerTarget), { avatarId: avatarId, avatarUrl: '' });
+      showToast('頭貼已更新！');
+    }
+    setShowAvatarPicker(false);
+    setAvatarPickerTarget(null);
+  }
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    showToast('上傳 Logo 中...');
+    try {
+      const storageRef = ref(storage, `system/logo_${Date.now()}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig, logoUrl: url }, { merge: true });
+      showToast('Logo 已更新！');
+    } catch (err) {
+      showToast('上傳失敗：' + (err.message || '請檢查權限！'));
+    } finally {
+      setIsUploadingLogo(false);
       e.target.value = null;
     }
   }
@@ -985,7 +1213,9 @@ export default function App() {
       phone: emp.phone || '',
       mbti: emp.mbti || '',
       avatarUrl: emp.avatarUrl || '',
+      avatarId: emp.avatarId || '',
     });
+    setEditEmpSelectedAvatar(emp.avatarId || '');
   }
 
   async function saveEditEmployee(id) {
@@ -1027,6 +1257,8 @@ export default function App() {
       store: newEmployeeData.store,
       role: newEmployeeData.role,
       password: newEmployeeData.password,
+      avatarId: '',
+      avatarUrl: '',
       examRecords: {},
       dailyRecords: {},
       createdAt: Date.now(),
@@ -1249,13 +1481,17 @@ export default function App() {
         <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-[40px] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] relative animate-in fade-in duration-500 border border-white/10 z-10">
           <div
             onClick={() => setShowSecretModal(true)}
-            className="w-16 h-16 sm:w-20 sm:h-20 bg-[#FCEEEA] rounded-full mx-auto mb-6 flex items-center justify-center cursor-pointer transition-transform hover:scale-105"
+            className="w-16 h-16 sm:w-20 sm:h-20 bg-[#FCEEEA] rounded-full mx-auto mb-6 flex items-center justify-center cursor-pointer transition-transform hover:scale-105 overflow-hidden"
           >
-            <ShieldCheck c="w-8 h-8 sm:w-10 sm:h-10 text-[#D85E38]" />
+            {appConfig.logoUrl ? (
+              <img src={appConfig.logoUrl} className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <ShieldCheck c="w-8 h-8 sm:w-10 sm:h-10 text-[#D85E38]" />
+            )}
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-center text-[#1A1A1A] mb-2 tracking-tight">
-            {authMode === 'login' ? '學習系統' : '申請帳號'}
+            {authMode === 'login' ? (appConfig.title || '學習系統') : '申請帳號'}
           </h1>
           <p className="text-center text-gray-400 text-xs tracking-widest mb-8 font-medium">
             {authMode === 'login'
@@ -1266,33 +1502,24 @@ export default function App() {
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {authMode === 'register' && (
               <div className="flex flex-col items-center mb-4">
-                <label className="relative w-20 h-20 rounded-full bg-[#F0F2F5] flex items-center justify-center overflow-hidden cursor-pointer group shadow-sm border-2 border-white">
-                  {regAvatarPreview ? (
-                    <img
-                      src={regAvatarPreview}
-                      className="w-full h-full object-cover"
-                    />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarPickerTarget('register');
+                    setShowAvatarPicker(true);
+                  }}
+                  className="relative w-20 h-20 rounded-full bg-[#F0F2F5] flex items-center justify-center overflow-hidden cursor-pointer group shadow-sm border-2 border-white hover:ring-2 hover:ring-[#D85E38]/50 transition-all"
+                >
+                  {regSelectedAvatar ? (
+                    <AvatarDisplay avatarId={regSelectedAvatar} />
                   ) : (
                     <Camera c="w-8 h-8 text-gray-400" />
                   )}
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-[10px] font-bold">
-                      上傳照片
-                    </span>
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                    <span className="text-white text-[10px] font-bold">選擇頭貼</span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        setRegAvatarFile(file);
-                        setRegAvatarPreview(URL.createObjectURL(file));
-                      }
-                    }}
-                  />
-                </label>
+                </button>
+                <p className="text-[10px] text-gray-400 font-bold mt-2">點擊選擇頭貼</p>
               </div>
             )}
             <div>
@@ -1761,15 +1988,27 @@ export default function App() {
       <div className="w-full max-w-md bg-[#1A1A1A] relative h-full flex flex-col overflow-hidden sm:border-x border-[#333]">
         <header className="bg-transparent pt-10 pb-6 px-6 flex justify-between items-center z-20 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-[#D85E38] p-2.5 rounded-full text-white shadow-lg shadow-[#D85E38]/30">
-              <Store c="w-5 h-5" />
+            <div className="bg-[#D85E38] p-2.5 rounded-full text-white shadow-lg shadow-[#D85E38]/30 overflow-hidden w-10 h-10 flex items-center justify-center">
+              {appConfig.logoUrl ? (
+                <img src={appConfig.logoUrl} className="w-full h-full object-cover rounded-full" />
+              ) : (
+                <Store c="w-5 h-5" />
+              )}
             </div>
             <h1 className="font-black text-white tracking-tight text-2xl">
-              {canEdit ? '總部學習' : '門店學習'}
+              {canEdit ? (appConfig.title ? `${appConfig.title} 後台` : '總部學習') : (appConfig.title || '門店學習')}
             </h1>
           </div>
           <div className="flex items-center gap-2">
             {canEdit && (
+              <button
+                onClick={() => { setEditAppTitle(appConfig.title || ''); setShowAppConfigModal(true); }}
+                className="bg-white/10 p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-white/20 transition-all border border-white/5"
+                title="系統設定 (標題/Logo)"
+              >
+                <Edit c="w-4 h-4" />
+              </button>
+            )}
               <button
                 onClick={() => setShowGpsModal(true)}
                 className="bg-white/10 p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-white/20 transition-all border border-white/5"
@@ -1889,6 +2128,7 @@ export default function App() {
                                 hireDate: pa.hireDate || '',
                                 phone: pa.phone || '',
                                 mbti: pa.mbti || '',
+                                avatarId: pa.avatarId || '',
                                 avatarUrl: pa.avatarUrl || '',
                                 examRecords: {},
                                 createdAt: Date.now(),
@@ -3083,11 +3323,8 @@ export default function App() {
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                {emp.avatarUrl ? (
-                                  <img
-                                    src={emp.avatarUrl}
-                                    className="w-full h-full object-cover"
-                                  />
+                                {(emp.avatarId || emp.avatarUrl) ? (
+                                  <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
                                 ) : (
                                   <User c="w-6 h-6 text-gray-400" />
                                 )}
@@ -3380,11 +3617,8 @@ export default function App() {
                           <summary className="p-5 flex items-center justify-between cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                {emp.avatarUrl ? (
-                                  <img
-                                    src={emp.avatarUrl}
-                                    className="w-full h-full object-cover"
-                                  />
+                                {(emp.avatarId || emp.avatarUrl) ? (
+                                  <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
                                 ) : (
                                   <User c="w-6 h-6 text-gray-400" />
                                 )}
@@ -3825,11 +4059,8 @@ export default function App() {
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                  {emp.avatarUrl ? (
-                                    <img
-                                      src={emp.avatarUrl}
-                                      className="w-full h-full object-cover"
-                                    />
+                                  {(emp.avatarId || emp.avatarUrl) ? (
+                                    <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
                                   ) : (
                                     <User c="w-6 h-6 text-gray-400" />
                                   )}
@@ -4859,31 +5090,27 @@ export default function App() {
                             編輯人員資料
                           </h3>
                           <div className="flex items-center gap-4 mb-2">
-                            <label className="relative w-16 h-16 rounded-full bg-white flex items-center justify-center overflow-hidden cursor-pointer group border-2 border-dashed border-gray-300">
-                              {editEmployeeData.avatarUrl || emp.avatarUrl ? (
-                                <img
-                                  src={
-                                    editEmployeeData.avatarUrl || emp.avatarUrl
-                                  }
-                                  className="w-full h-full object-cover"
-                                />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvatarPickerTarget('edit');
+                                setShowAvatarPicker(true);
+                              }}
+                              className="relative w-16 h-16 rounded-full bg-white flex items-center justify-center overflow-hidden cursor-pointer group border-2 border-dashed border-gray-300 hover:border-[#D85E38] transition-colors"
+                            >
+                              {(editEmployeeData.avatarId || editEmpSelectedAvatar) ? (
+                                <AvatarDisplay avatarId={editEmployeeData.avatarId || editEmpSelectedAvatar} />
+                              ) : editEmployeeData.avatarUrl ? (
+                                <img src={editEmployeeData.avatarUrl} className="w-full h-full object-cover" />
                               ) : (
                                 <User c="w-8 h-8 text-gray-400" />
                               )}
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                                 <Camera c="w-5 h-5 text-white" />
                               </div>
-                              <input
-                                type="file"
-                                className="hidden"
-                                accept="image/*"
-                                onChange={(e) =>
-                                  handleAvatarUpload(emp.id, e, true)
-                                }
-                              />
-                            </label>
+                            </button>
                             <span className="text-xs text-gray-500 font-bold">
-                              點擊更換大頭照
+                              點擊更換頭貼
                             </span>
                           </div>
                           <div>
@@ -4987,27 +5214,25 @@ export default function App() {
                           {/* === 第一面：基本資料 === */}
                           <div className="flex justify-between items-start mb-5">
                             <div className="flex items-center space-x-4">
-                              <label className="relative w-16 h-16 rounded-full bg-[#F0F2F5] flex items-center justify-center overflow-hidden cursor-pointer group border-2 border-white shadow-sm">
-                                {emp.avatarUrl ? (
-                                  <img
-                                    src={emp.avatarUrl}
-                                    className="w-full h-full object-cover"
-                                  />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAvatarPickerTarget(emp.id);
+                                  setShowAvatarPicker(true);
+                                }}
+                                className="relative w-16 h-16 rounded-full bg-[#F0F2F5] flex items-center justify-center overflow-hidden cursor-pointer group border-2 border-white shadow-sm"
+                              >
+                                {emp.avatarId ? (
+                                  <AvatarDisplay avatarId={emp.avatarId} />
+                                ) : emp.avatarUrl ? (
+                                  <img src={emp.avatarUrl} className="w-full h-full object-cover" />
                                 ) : (
                                   <User c="w-8 h-8 text-gray-400" />
                                 )}
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                                   <Camera c="w-5 h-5 text-white" />
                                 </div>
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  accept="image/*"
-                                  onChange={(e) =>
-                                    handleAvatarUpload(emp.id, e, false)
-                                  }
-                                />
-                              </label>
+                              </button>
                               <div>
                                 <h3 className="font-black text-xl mb-1">
                                   {String(emp.name)}
@@ -5633,6 +5858,104 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* App 設定彈窗 (標題 + Logo) */}
+      {showAppConfigModal && canEdit && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-[32px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-black text-xl text-[#1A1A1A] flex items-center">
+                <Settings c="w-6 h-6 mr-2 text-[#D85E38]" /> 系統外觀設定
+              </h3>
+              <button onClick={() => setShowAppConfigModal(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 transition-colors">
+                <XCircle c="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* 標題設定 */}
+            <div className="mb-5">
+              <label className="text-[11px] font-bold text-gray-500 block mb-2 ml-1">系統標題名稱</label>
+              <input
+                type="text"
+                value={editAppTitle}
+                onChange={(e) => setEditAppTitle(e.target.value)}
+                className="w-full p-4 bg-[#F0F2F5] rounded-[20px] font-bold text-[#1A1A1A] outline-none focus:ring-2 focus:ring-[#D85E38]/50 border-none text-sm"
+                placeholder="例如：XX 門市學習平台"
+                maxLength={20}
+              />
+              <button
+                onClick={async () => {
+                  if (!editAppTitle.trim()) { showToast('請輸入標題名稱！'); return; }
+                  await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig, title: editAppTitle.trim() }, { merge: true });
+                  showToast('標題已更新！');
+                }}
+                className="mt-3 w-full py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-md"
+              >
+                儲存標題
+              </button>
+            </div>
+
+            {/* Logo 設定 */}
+            <div className="pt-5 border-t border-gray-100">
+              <label className="text-[11px] font-bold text-gray-500 block mb-3 ml-1">系統 Logo 圖示</label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-[#FCEEEA] flex items-center justify-center shrink-0 shadow-sm border-2 border-white">
+                  {appConfig.logoUrl ? (
+                    <img src={appConfig.logoUrl} className="w-full h-full object-cover" />
+                  ) : (
+                    <ShieldCheck c="w-8 h-8 text-[#D85E38]" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="flex items-center justify-center gap-2 w-full py-3 bg-[#FCEEEA] text-[#D85E38] rounded-full font-bold text-sm cursor-pointer hover:bg-[#F9E2DB] transition-colors">
+                    {isUploadingLogo ? '上傳中...' : (
+                      <><Camera c="w-4 h-4" /> 上傳 Logo 圖片</>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={isUploadingLogo}
+                      onChange={handleLogoUpload}
+                    />
+                  </label>
+                  {appConfig.logoUrl && (
+                    <button
+                      onClick={async () => {
+                        await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig, logoUrl: '' }, { merge: true });
+                        showToast('Logo 已移除');
+                      }}
+                      className="mt-2 w-full py-2 text-gray-400 text-xs font-bold hover:text-red-500 transition-colors"
+                    >
+                      移除 Logo（使用預設圖示）
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowAppConfigModal(false)}
+              className="mt-6 w-full py-3.5 bg-[#F0F2F5] text-gray-600 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors"
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 頭貼選擇器彈窗 */}
+      {showAvatarPicker && (
+        <AvatarPicker
+          currentAvatar={
+            avatarPickerTarget === 'register' ? regSelectedAvatar :
+            avatarPickerTarget === 'edit' ? (editEmpSelectedAvatar || editEmployeeData?.avatarId || '') :
+            (employees.find(e => e.id === avatarPickerTarget)?.avatarId || '')
+          }
+          onSelect={handlePresetAvatarSelect}
+          onClose={() => { setShowAvatarPicker(false); setAvatarPickerTarget(null); }}
+        />
       )}
 
       {toast && (
