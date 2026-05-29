@@ -331,8 +331,8 @@ const Lock = ({ c }) => (
 );
 const Settings = ({ c }) => (
   <I c={c}>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </I>
 );
 const Camera = ({ c }) => (
@@ -2004,16 +2004,7 @@ export default function App() {
               <button
                 onClick={() => { setEditAppTitle(appConfig.title || ''); setShowAppConfigModal(true); }}
                 className="bg-white/10 p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-white/20 transition-all border border-white/5"
-                title="系統設定 (標題/Logo)"
-              >
-                <Edit c="w-4 h-4" />
-              </button>
-            )}
-            {canEdit && (
-              <button
-                onClick={() => setShowGpsModal(true)}
-                className="bg-white/10 p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-white/20 transition-all border border-white/5"
-                title="GPS 定位設定"
+                title="系統設定"
               >
                 <Settings c="w-4 h-4" />
               </button>
@@ -5936,9 +5927,19 @@ export default function App() {
               </div>
             </div>
 
+            {/* GPS 設定入口 */}
+            <div className="pt-5 border-t border-gray-100 mt-2">
+              <button
+                onClick={() => { setShowAppConfigModal(false); setShowGpsModal(true); }}
+                className="w-full py-3.5 bg-[#F0F2F5] text-gray-600 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <MapPin c="w-4 h-4 text-[#D85E38]" /> GPS 門店定位設定
+              </button>
+            </div>
+
             <button
               onClick={() => setShowAppConfigModal(false)}
-              className="mt-6 w-full py-3.5 bg-[#F0F2F5] text-gray-600 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors"
+              className="mt-3 w-full py-3.5 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors"
             >
               關閉
             </button>
