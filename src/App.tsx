@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
@@ -2010,6 +2009,7 @@ export default function App() {
                 <Edit c="w-4 h-4" />
               </button>
             )}
+            {canEdit && (
               <button
                 onClick={() => setShowGpsModal(true)}
                 className="bg-white/10 p-2.5 rounded-full text-gray-300 hover:text-white hover:bg-white/20 transition-all border border-white/5"
