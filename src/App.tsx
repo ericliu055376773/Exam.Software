@@ -655,17 +655,22 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                 )}
               </div>
               {!compact && (() => {
-                // 計算該分類的平均分數
-                let totalScore = 0;
-                let scoredCount = 0;
+                // 計算該分類的真實得分（依 pointValue 加總）
+                let totalPoints = 0;
+                let earnedPoints = 0;
                 catExams.forEach((exam) => {
+                  const pv = exam.pointValue ?? 10;
+                  totalPoints += pv;
                   const record = emp?.examRecords?.[exam.id];
-                  if (record && typeof record === 'object' && record.score !== undefined) {
-                    totalScore += Number(record.score);
-                    scoredCount++;
+                  if (record === 'passed' || (record && typeof record === 'object' && record.status === 'passed')) {
+                    earnedPoints += pv;
                   }
                 });
-                const avgScore = scoredCount > 0 ? Math.round(totalScore / scoredCount) : null;
+                const catScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : null;
+                const hasSomeRecord = catExams.some((exam) => {
+                  const r = emp?.examRecords?.[exam.id];
+                  return r && (r === 'passed' || r === 'failed' || (typeof r === 'object' && r.status));
+                });
                 return (
                   <div className="absolute -bottom-7 flex flex-col items-center">
                     <span
@@ -677,8 +682,8 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                         ? String(cat.name).substring(0, 5) + '..'
                         : String(cat.name || '')}
                     </span>
-                    <span className={`text-[9px] font-black ${isPassed ? 'text-[#3B82F6]' : avgScore !== null ? 'text-[#D85E38]' : 'text-gray-300'}`}>
-                      {avgScore !== null ? `${avgScore}分` : '–'}
+                    <span className={`text-[9px] font-black ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
+                      {hasSomeRecord ? `${catScore}分` : '–'}
                     </span>
                   </div>
                 );
@@ -777,7 +782,10 @@ export default function App() {
     description: '',
     options: ['', '', '', ''],
     correctAnswer: '',
+    pointValue: 10,
   });
+  const [showExamResult, setShowExamResult] = useState(false);
+  const [examFinalScore, setExamFinalScore] = useState(null);
   const [deletingExamId, setDeletingExamId] = useState(null);
 
   // 考試作答前選擇考官與開始狀態
@@ -834,6 +842,7 @@ export default function App() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryPassingScore, setEditCategoryPassingScore] = useState(60);
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
 
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
@@ -1371,13 +1380,29 @@ export default function App() {
         passedCount++;
     });
     const total = catExams.length;
-    const score = total > 0 ? Math.round((passedCount / total) * 100) : 100;
-    const isPassed = total === 0 || passedCount === total;
+    // 計算真實分數：各題 pointValue 加總，已通過才得分
+    let totalPoints = 0;
+    let earnedPoints = 0;
+    catExams.forEach((exam) => {
+      const pv = exam.pointValue ?? 10;
+      totalPoints += pv;
+      const rec = currentUserData?.examRecords?.[exam.id];
+      if (rec === 'passed' || (rec && typeof rec === 'object' && rec.status === 'passed')) {
+        earnedPoints += pv;
+      }
+    });
+    const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 100;
+    const passingScore = cat.passingScore ?? 60;
+    const allAnswered = catExams.every((exam) => {
+      const rec = currentUserData?.examRecords?.[exam.id];
+      return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor')));
+    });
+    const isPassed = total === 0 || (allAnswered && score >= passingScore);
     const isUnlocked = canEdit || isPreviousPassed;
     isPreviousPassed = isPassed;
     return {
       ...cat,
-      progress: { total, passed: passedCount, score, isPassed },
+      progress: { total, passed: passedCount, score, isPassed, allAnswered, passingScore },
       isUnlocked,
     };
   });
@@ -1422,6 +1447,7 @@ export default function App() {
       : {};
     const prevMistakes = newRecords[exam.id]?.mistakes || 0;
     const newMistakes = status === 'failed' ? prevMistakes + 1 : prevMistakes;
+    const pointValue = exam.pointValue ?? 10;
 
     newRecords[exam.id] = {
       ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}),
@@ -1430,6 +1456,8 @@ export default function App() {
       title: exam.title,
       mistakes: newMistakes,
       approver: selectedProctor,
+      score: status === 'passed' ? pointValue : 0,
+      pointValue,
     };
 
     if (exam.type === 'essay') {
@@ -2375,16 +2403,28 @@ export default function App() {
                     {canEdit && activeCategoryData && !isAddingCategory && (
                       <div className="mb-5 bg-white p-4 rounded-[20px] soft-shadow flex items-center justify-between border border-gray-100">
                         {editingCategoryId === activeCategoryData.id ? (
-                          <div className="flex-1 flex gap-2">
-                            <input
-                              type="text"
-                              value={editCategoryName}
-                              onChange={(e) =>
-                                setEditCategoryName(e.target.value)
-                              }
-                              className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none font-bold text-sm"
-                              placeholder="分類名稱"
-                            />
+                          <div className="flex-1 flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={editCategoryName}
+                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none font-bold text-sm"
+                                placeholder="分類名稱"
+                              />
+                              <div className="flex items-center gap-1 bg-[#FCEEEA] px-3 rounded-lg">
+                                <span className="text-[10px] font-bold text-[#D85E38] whitespace-nowrap">及格分數</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="100"
+                                  value={editCategoryPassingScore}
+                                  onChange={(e) => setEditCategoryPassingScore(Number(e.target.value))}
+                                  className="w-12 p-1 bg-transparent outline-none font-black text-[#D85E38] text-sm text-center"
+                                />
+                                <span className="text-[10px] font-bold text-[#D85E38]">分</span>
+                              </div>
+                            </div>
                             <button
                               onClick={async () => {
                                 if (editCategoryName.trim()) {
@@ -2394,10 +2434,10 @@ export default function App() {
                                       'examCategories',
                                       activeCategoryData.id
                                     ),
-                                    { name: editCategoryName.trim() }
+                                    { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60 }
                                   );
                                   setEditingCategoryId(null);
-                                  showToast('分類名稱已更新');
+                                  showToast('分類名稱及及格分數已更新');
                                 }
                               }}
                               className="bg-[#1A1A1A] text-white px-4 py-2 rounded-lg text-xs font-bold"
@@ -2413,10 +2453,13 @@ export default function App() {
                           </div>
                         ) : (
                           <>
-                            <h3 className="font-black text-[#1A1A1A] text-[15px] flex items-center">
+                            <h3 className="font-black text-[#1A1A1A] text-[15px] flex items-center flex-wrap gap-2">
                               {String(activeCategoryData.name)}
-                              <span className="ml-3 text-[10px] bg-[#F0F2F5] text-gray-500 px-2.5 py-1 rounded-full">
+                              <span className="text-[10px] bg-[#F0F2F5] text-gray-500 px-2.5 py-1 rounded-full">
                                 {activeExams.length} 題
+                              </span>
+                              <span className="text-[10px] bg-[#FCEEEA] text-[#D85E38] px-2.5 py-1 rounded-full font-bold">
+                                及格 {activeCategoryData.passingScore ?? 60} 分
                               </span>
                             </h3>
                             <div className="flex gap-1">
@@ -2424,6 +2467,7 @@ export default function App() {
                                 onClick={() => {
                                   setEditingCategoryId(activeCategoryData.id);
                                   setEditCategoryName(activeCategoryData.name);
+                                  setEditCategoryPassingScore(activeCategoryData.passingScore ?? 60);
                                 }}
                                 className="p-2 text-gray-400 hover:text-[#5C6AC4] bg-gray-50 rounded-full transition-colors"
                               >
@@ -2485,6 +2529,7 @@ export default function App() {
                                   description: '',
                                   options: ['', '', '', ''],
                                   correctAnswer: 'O',
+                                  pointValue: 10,
                                   order: activeExams.length,
                                   createdAt: Date.now(),
                                 }
@@ -2795,6 +2840,20 @@ export default function App() {
                                       </p>
                                     )}
                                   </div>
+                                  {/* 題目分數設定 */}
+                                  <div className="bg-[#F8FAFC] rounded-xl p-3 border border-gray-100">
+                                    <label className="text-[11px] font-bold text-gray-500 block mb-2">此題配分（分）</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="100"
+                                      value={editExamData.pointValue ?? 10}
+                                      onChange={(e) => setEditExamData({ ...editExamData, pointValue: Number(e.target.value) || 10 })}
+                                      className="w-full p-3 bg-white border border-gray-200 rounded-lg outline-none font-black text-[#1A1A1A] text-sm focus:border-[#D85E38]"
+                                    />
+                                    <p className="text-[10px] text-gray-400 mt-1">預設 10 分，所有題目總分即為各題配分總和</p>
+                                  </div>
+
                                   <div className="flex pt-2 gap-3">
                                     <button
                                       onClick={() => setEditingExamId(null)}
@@ -2858,6 +2917,7 @@ export default function App() {
                                           '',
                                         ],
                                         correctAnswer: exam.correctAnswer || '',
+                                        pointValue: exam.pointValue ?? 10,
                                       });
                                     }}
                                     className="text-gray-400 hover:text-[#1A1A1A] p-2 bg-white rounded-full shadow-sm"
@@ -3210,33 +3270,62 @@ export default function App() {
                         })
                       )}
 
-                      {!canEdit && activeExams.length > 0 && (
-                        <div className="mt-8 mb-4 bg-white p-8 rounded-[32px] soft-shadow border border-gray-100 text-center relative overflow-hidden animate-in slide-in-from-bottom-4">
-                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#D85E38] rounded-full blur-[60px] opacity-10 pointer-events-none"></div>
-                          <h3 className="font-black text-[#1A1A1A] text-lg mb-2 relative z-10">
-                            本分類測驗結果
-                          </h3>
-                          <div className="text-5xl font-black text-[#D85E38] mb-5 tracking-tighter relative z-10">
-                            {activeCategoryData?.progress?.score}{' '}
-                            <span className="text-[16px] text-gray-400 font-bold ml-1">
-                              / 100 分
-                            </span>
-                          </div>
-                          <div className="relative z-10">
-                            {activeCategoryData?.progress?.isPassed ? (
-                              <div className="inline-flex items-center bg-[#F1F8F5] text-[#2F7E5B] px-5 py-3 rounded-full font-bold text-[13px] shadow-sm">
-                                <CheckCircle2 c="w-4 h-4 mr-2" />{' '}
-                                恭喜通過！已解鎖下一分類
-                              </div>
+                      {!canEdit && activeExams.length > 0 && (() => {
+                        const prog = activeCategoryData?.progress;
+                        const allAnswered = prog?.allAnswered;
+                        const score = prog?.score ?? 0;
+                        const passingScore = prog?.passingScore ?? 60;
+                        const isPassed = prog?.isPassed;
+
+                        return (
+                          <div className="mt-8 mb-4 bg-white p-8 rounded-[32px] soft-shadow border border-gray-100 text-center relative overflow-hidden animate-in slide-in-from-bottom-4">
+                            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-[60px] opacity-10 pointer-events-none ${isPassed ? 'bg-[#2F7E5B]' : 'bg-[#D85E38]'}`}></div>
+                            <h3 className="font-black text-[#1A1A1A] text-lg mb-2 relative z-10">
+                              本分類測驗結果
+                            </h3>
+
+                            {allAnswered ? (
+                              <>
+                                <div className={`text-5xl font-black mb-1 tracking-tighter relative z-10 ${isPassed ? 'text-[#2F7E5B]' : 'text-[#D85E38]'}`}>
+                                  {score}
+                                  <span className="text-[16px] text-gray-400 font-bold ml-1">/ 100 分</span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-bold mb-5 relative z-10">
+                                  及格標準：{passingScore} 分
+                                </p>
+                                <div className="relative z-10">
+                                  {isPassed ? (
+                                    <div className="flex flex-col items-center gap-3">
+                                      <div className="inline-flex items-center bg-[#F1F8F5] text-[#2F7E5B] px-5 py-3 rounded-full font-bold text-[13px] shadow-sm">
+                                        <CheckCircle2 c="w-4 h-4 mr-2" /> 恭喜通過！已解鎖下一分類
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-3">
+                                      <div className="inline-flex items-center bg-[#FCEEEA] text-[#D85E38] px-5 py-3 rounded-full font-bold text-[13px] shadow-sm">
+                                        <XCircle c="w-4 h-4 mr-2" /> 未達及格分數，請向考官申請重考
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </>
                             ) : (
-                              <div className="inline-flex items-center bg-[#F0F2F5] text-gray-500 px-5 py-3 rounded-full font-bold text-[13px] shadow-sm">
-                                <Lock c="w-4 h-4 mr-2" />{' '}
-                                尚未通過，請完成所有測驗以解鎖
-                              </div>
+                              <>
+                                <div className="text-5xl font-black text-[#D85E38] mb-1 tracking-tighter relative z-10">
+                                  {score}
+                                  <span className="text-[16px] text-gray-400 font-bold ml-1">/ 100 分</span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-bold mb-5 relative z-10">
+                                  尚有題目未作答，請完成所有題目後結束考試
+                                </p>
+                                <div className="inline-flex items-center bg-[#F0F2F5] text-gray-400 px-5 py-3 rounded-full font-bold text-[13px] relative z-10">
+                                  <Lock c="w-4 h-4 mr-2" /> 完成所有題目後即可結束考試
+                                </div>
+                              </>
                             )}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </>
                 )}
