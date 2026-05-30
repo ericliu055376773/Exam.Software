@@ -655,22 +655,22 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
         {catData.map(({ cat, isPassed, catScore, hasSomeRecord, nameDisplay }, index) => {
           const dotW = compact ? 28 : 36;
           const lineW2 = compact ? 32 : 64;
-          // 每個 label 的左 offset = 圓圈中心；寬度佔圓圈+連線，最後一個只佔圓圈
           const blockW = index < catData.length - 1 ? dotW + lineW2 : dotW;
           return (
-            <div key={cat.id} className="flex-shrink-0 flex flex-col items-start" style={{ width: blockW }}>
-              <span className={`font-bold whitespace-nowrap ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-gray-600' : 'text-gray-400'}`}
-                style={{ paddingLeft: dotW / 2, transform: 'translateX(-50%)' }}>
-                {nameDisplay}
-              </span>
-              <span className={`font-black ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}
-                style={{ paddingLeft: dotW / 2, transform: 'translateX(-50%)' }}>
-                {hasSomeRecord ? `${catScore}分` : '–'}
-              </span>
+            <div key={cat.id} className="flex-shrink-0 relative" style={{ width: blockW }}>
+              <div className="flex flex-col items-center" style={{ position: 'absolute', left: dotW / 2, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
+                <span className={`font-bold ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-gray-600' : 'text-gray-400'}`}>
+                  {nameDisplay}
+                </span>
+                <span className={`font-black ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
+                  {hasSomeRecord ? `${catScore}分` : '–'}
+                </span>
+              </div>
             </div>
           );
         })}
       </div>
+      <div style={{ height: compact ? 28 : 32 }} />
     </div>
   );
 };
