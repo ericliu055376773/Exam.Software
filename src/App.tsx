@@ -651,18 +651,18 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
         })}
       </div>
       {/* 第二行：名稱 + 分數，對齊圓圈中心 */}
-      <div className="flex items-start mt-1.5">
+      <div className="flex items-start mt-2" style={{ height: compact ? 30 : 34 }}>
         {catData.map(({ cat, isPassed, catScore, hasSomeRecord, nameDisplay }, index) => {
           const dotW = compact ? 28 : 36;
           const lineW2 = compact ? 32 : 64;
           const blockW = index < catData.length - 1 ? dotW + lineW2 : dotW;
           return (
-            <div key={cat.id} className="flex-shrink-0 relative" style={{ width: blockW }}>
-              <div className="flex flex-col items-center" style={{ position: 'absolute', left: dotW / 2, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
-                <span className={`font-bold ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-gray-600' : 'text-gray-400'}`}>
+            <div key={cat.id} className="flex-shrink-0" style={{ width: blockW, position: 'relative', height: compact ? 30 : 34 }}>
+              <div style={{ position: 'absolute', left: dotW / 2, top: 0, transform: 'translateX(-50%)', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700 }} className={isPassed ? 'text-gray-600' : 'text-gray-400'}>
                   {nameDisplay}
                 </span>
-                <span className={`font-black ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
+                <span style={{ fontSize: compact ? 8 : 9, fontWeight: 900 }} className={isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}>
                   {hasSomeRecord ? `${catScore}分` : '–'}
                 </span>
               </div>
@@ -670,7 +670,6 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
           );
         })}
       </div>
-      <div style={{ height: compact ? 28 : 32 }} />
     </div>
   );
 };
@@ -5380,7 +5379,7 @@ export default function App() {
                                 / {categories.length}
                               </span>
                             </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-[16px] p-3 overflow-hidden">
+                            <div className="bg-gray-50 border border-gray-100 rounded-[20px] p-5 overflow-hidden">
                               <AchievementProgress
                                 emp={emp}
                                 categories={categories}
