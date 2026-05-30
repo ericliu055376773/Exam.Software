@@ -5379,7 +5379,7 @@ export default function App() {
                                 / {categories.length}
                               </span>
                             </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-[20px] p-5 overflow-hidden">
+                            <div className="bg-gray-50 border border-gray-100 rounded-[20px] pt-5 px-5 pb-10">
                               <AchievementProgress
                                 emp={emp}
                                 categories={categories}
