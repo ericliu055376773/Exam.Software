@@ -650,22 +650,21 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
           );
         })}
       </div>
-      {/* 第二行：名稱 + 分數，對齊圓圈中心 */}
-      <div className="flex items-start mt-2" style={{ height: compact ? 30 : 34 }}>
+      {/* 第二行：名稱 + 分數，直接 flex 對齊不用 absolute */}
+      <div className="flex items-start mt-2">
         {catData.map(({ cat, isPassed, catScore, hasSomeRecord, nameDisplay }, index) => {
           const dotW = compact ? 28 : 36;
           const lineW2 = compact ? 32 : 64;
+          // 每個 cell 寬 = 圓圈寬 + 連線寬（最後一個只有圓圈寬）
           const blockW = index < catData.length - 1 ? dotW + lineW2 : dotW;
           return (
-            <div key={cat.id} className="flex-shrink-0" style={{ width: blockW, position: 'relative', height: compact ? 30 : 34 }}>
-              <div style={{ position: 'absolute', left: dotW / 2, top: 0, transform: 'translateX(-50%)', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700 }} className={isPassed ? 'text-gray-600' : 'text-gray-400'}>
-                  {nameDisplay}
-                </span>
-                <span style={{ fontSize: compact ? 8 : 9, fontWeight: 900 }} className={isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}>
-                  {hasSomeRecord ? `${catScore}分` : '–'}
-                </span>
-              </div>
+            <div key={cat.id} className="flex-shrink-0 flex flex-col items-center" style={{ width: blockW }}>
+              <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, lineHeight: '1.3', whiteSpace: 'nowrap' }} className={isPassed ? 'text-gray-600' : 'text-gray-400'}>
+                {nameDisplay}
+              </span>
+              <span style={{ fontSize: compact ? 8 : 9, fontWeight: 900, lineHeight: '1.3', whiteSpace: 'nowrap' }} className={isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}>
+                {hasSomeRecord ? `${catScore}分` : '–'}
+              </span>
             </div>
           );
         })}
@@ -5379,7 +5378,7 @@ export default function App() {
                                 / {categories.length}
                               </span>
                             </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-[20px] pt-5 px-5 pb-10">
+                            <div className="bg-gray-50 border border-gray-100 rounded-[20px] p-5">
                               <AchievementProgress
                                 emp={emp}
                                 categories={categories}
