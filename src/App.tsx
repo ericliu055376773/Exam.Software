@@ -655,15 +655,20 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                 )}
               </div>
               {!compact && (
-                <span
-                  className={`absolute -bottom-5 text-[9px] font-bold whitespace-nowrap ${
-                    isPassed ? 'text-gray-700' : 'text-gray-400'
-                  }`}
-                >
-                  {cat.name && cat.name.length > 5
-                    ? String(cat.name).substring(0, 5) + '..'
-                    : String(cat.name || '')}
-                </span>
+                <div className="absolute -bottom-7 flex flex-col items-center">
+                  <span
+                    className={`text-[9px] font-bold whitespace-nowrap ${
+                      isPassed ? 'text-gray-700' : 'text-gray-400'
+                    }`}
+                  >
+                    {cat.name && cat.name.length > 5
+                      ? String(cat.name).substring(0, 5) + '..'
+                      : String(cat.name || '')}
+                  </span>
+                  <span className={`text-[9px] font-black ${isPassed ? 'text-[#3B82F6]' : 'text-gray-300'}`}>
+                    {passedCount}/{total}
+                  </span>
+                </div>
               )}
             </div>
 
@@ -722,7 +727,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   // === App 設定 (標題、Logo) ===
-  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '' });
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄' });
   const [editAppTitle, setEditAppTitle] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showAppConfigModal, setShowAppConfigModal] = useState(false);
@@ -934,8 +939,8 @@ export default function App() {
     const unsubAppConfig = onSnapshot(
       doc(db, 'settings', 'appConfig'),
       (snap) => {
-        if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', ...snap.data() });
-        else setAppConfig({ title: '學習系統', logoUrl: '' });
+        if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', ...snap.data() });
+        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄' });
       }
     );
 
@@ -3236,7 +3241,7 @@ export default function App() {
                     <ChevronLeft c="w-5 h-5" />
                   </button>
                   <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight">
-                    考試評分紀錄<span className="text-[#D85E38]">.</span>
+                    {appConfig.examGradingTitle || '考試評分紀錄'}<span className="text-[#D85E38]">.</span>
                   </h2>
                 </div>
 
@@ -3420,21 +3425,43 @@ export default function App() {
                                           ({ exam, record }) => (
                                             <div
                                               key={exam.id}
-                                              className="flex justify-between items-center p-2.5 bg-red-50/50 rounded-lg border border-red-100"
+                                              className="flex justify-between items-start p-2.5 bg-red-50/50 rounded-lg border border-red-100"
                                             >
-                                              <span className="text-xs font-bold text-gray-700">
-                                                {String(exam.title)}
-                                              </span>
-                                              <div className="flex flex-col items-end">
+                                              <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-bold text-gray-700">
+                                                  {String(exam.title)}
+                                                </span>
+                                                {record.score !== undefined && (
+                                                  <span className="text-[10px] font-black text-red-400">
+                                                    得分：{record.score} 分
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex flex-col items-end gap-1">
                                                 <span className="text-[10px] text-red-500 bg-white px-2 py-1 rounded-md font-bold flex items-center shadow-sm">
                                                   <XCircle c="w-3 h-3 mr-1" />
                                                   未通過
                                                 </span>
                                                 {record.timestamp && (
-                                                  <span className="text-[9px] text-gray-400 mt-1">
-                                                    {new Date(
-                                                      record.timestamp
-                                                    ).toLocaleDateString()}
+                                                  <span className="text-[9px] text-gray-400">
+                                                    {new Date(record.timestamp).toLocaleDateString()}
+                                                  </span>
+                                                )}
+                                                {!record.retestRequested ? (
+                                                  <button
+                                                    onClick={async () => {
+                                                      await updateDoc(doc(db, 'employees', emp.id), {
+                                                        [`examRecords.${exam.id}`]: { ...record, retestRequested: true }
+                                                      });
+                                                      showToast(`已為 ${emp.name} 開放重考：${exam.title}`);
+                                                    }}
+                                                    className="text-[9px] font-bold text-white bg-[#D85E38] px-2.5 py-1 rounded-full hover:bg-[#C25330] transition-colors shadow-sm mt-0.5"
+                                                  >
+                                                    開放重考
+                                                  </button>
+                                                ) : (
+                                                  <span className="text-[9px] font-bold text-[#D85E38] bg-[#FCEEEA] px-2.5 py-1 rounded-full mt-0.5">
+                                                    重考申請中
                                                   </span>
                                                 )}
                                               </div>
@@ -3461,13 +3488,14 @@ export default function App() {
                                                 <span className="text-[11px] font-bold text-gray-700">
                                                   {String(exam.title)}
                                                 </span>
-                                                <span className="text-[9px] text-gray-400">
-                                                  {record.timestamp
-                                                    ? new Date(
-                                                        record.timestamp
-                                                      ).toLocaleDateString()
-                                                    : ''}
-                                                </span>
+                                                <div className="flex flex-col items-end">
+                                                  {record.score !== undefined && (
+                                                    <span className="text-[10px] font-black text-[#2F7E5B]">{record.score} 分</span>
+                                                  )}
+                                                  <span className="text-[9px] text-gray-400">
+                                                    {record.timestamp ? new Date(record.timestamp).toLocaleDateString() : ''}
+                                                  </span>
+                                                </div>
                                               </div>
                                             )
                                           )}
@@ -3544,16 +3572,18 @@ export default function App() {
                       評分設定
                     </button>
                   )}
-                  <button
-                    onClick={() => setRecordTab('mine')}
-                    className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                      recordTab === 'mine'
-                        ? 'bg-white text-[#D85E38] shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    我的紀錄
-                  </button>
+                  {!canEdit && (
+                    <button
+                      onClick={() => setRecordTab('mine')}
+                      className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                        recordTab === 'mine'
+                          ? 'bg-white text-[#D85E38] shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      我的紀錄
+                    </button>
+                  )}
                 </div>
 
                 {recordTab === 'review' && canEdit && (
@@ -5844,6 +5874,28 @@ export default function App() {
                   if (!editAppTitle.trim()) { showToast('請輸入標題名稱！'); return; }
                   await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig, title: editAppTitle.trim() }, { merge: true });
                   showToast('標題已更新！');
+                }}
+                className="mt-3 w-full py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-md"
+              >
+                儲存標題
+              </button>
+            </div>
+
+            {/* 考試評分紀錄標題設定 */}
+            <div className="mb-5 pt-5 border-t border-gray-100">
+              <label className="text-[11px] font-bold text-gray-500 block mb-2 ml-1">考試評分紀錄頁標題</label>
+              <input
+                type="text"
+                value={appConfig.examGradingTitle || '考試評分紀錄'}
+                onChange={(e) => setAppConfig(prev => ({ ...prev, examGradingTitle: e.target.value }))}
+                className="w-full p-4 bg-[#F0F2F5] rounded-[20px] font-bold text-[#1A1A1A] outline-none focus:ring-2 focus:ring-[#D85E38]/50 border-none text-sm"
+                placeholder="例如：門市考核評分"
+                maxLength={20}
+              />
+              <button
+                onClick={async () => {
+                  await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig }, { merge: true });
+                  showToast('評分紀錄標題已更新！');
                 }}
                 className="mt-3 w-full py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-md"
               >
