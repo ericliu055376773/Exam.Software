@@ -1311,8 +1311,8 @@ export default function App() {
   let pendingApprovalsCount = 0;
   if (isGrader || canEdit) {
     const gradeTargetEmps = canEdit
-      ? employees
-      : employees.filter((e) => e.store === currentUserData?.store);
+      ? employees.filter((e) => e.id !== currentUserData?.id)
+      : employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id);
     gradeTargetEmps.forEach((emp) => {
       const applicableItems = dailyItems.filter((item) =>
         (item.targetRoles || []).includes(emp.role)
@@ -3999,9 +3999,9 @@ export default function App() {
 
                     {(() => {
                       const gradeTargetEmps = canEdit
-                        ? employees
+                        ? employees.filter((e) => e.id !== currentUserData?.id)
                         : employees.filter(
-                            (e) => e.store === currentUserData?.store
+                            (e) => e.store === currentUserData?.store && e.id !== currentUserData?.id
                           );
 
                       if (gradeTargetEmps.length === 0)
@@ -5490,45 +5490,8 @@ export default function App() {
                               </div>
                             </>
                           ) : (
-                            /* === 前台員工視角：底部新增個性特徵填寫區 === */
-                            <div className="mt-2 pt-5 border-t border-[#F0F2F5]">
-                              <h4 className="font-black mb-3 flex items-center text-sm text-[#1A1A1A]">
-                                <User c="w-4 h-4 mr-1.5 text-[#D85E38]" />{' '}
-                                個人性格特徵
-                              </h4>
-                              {emp.personalityText ? (
-                                <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-700 font-bold leading-relaxed border border-gray-100">
-                                  {String(emp.personalityText)}
-                                </div>
-                              ) : (
-                                <div className="flex flex-col gap-2 animate-in fade-in">
-                                  <textarea
-                                    id={`pers-${emp.id}`}
-                                    className="bg-[#F0F2F5] p-4 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-[#D85E38]/50 w-full min-h-[100px] resize-none"
-                                    placeholder="請誠實填寫您的性格特徵 (注意：儲存後將無法自行更改)..."
-                                  ></textarea>
-                                  <button
-                                    onClick={async () => {
-                                      const txt = document.getElementById(
-                                        `pers-${emp.id}`
-                                      ).value;
-                                      if (txt.trim()) {
-                                        await updateDoc(
-                                          doc(db, 'employees', emp.id),
-                                          { personalityText: txt.trim() }
-                                        );
-                                        showToast('個性特徵已儲存');
-                                      } else {
-                                        showToast('請勿留白');
-                                      }
-                                    }}
-                                    className="self-end bg-[#D85E38] text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md hover:bg-[#C25330] transition-colors"
-                                  >
-                                    確認儲存
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            /* === 前台員工視角：性格特徵由後台管理，前台不顯示 === */
+                            null
                           )}
                         </>
                       )}
