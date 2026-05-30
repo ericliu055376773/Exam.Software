@@ -584,8 +584,8 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
     <div
       className={`flex items-center overflow-x-auto hide-scrollbar ${
         compact
-          ? 'gap-0'
-          : 'gap-0 pb-8 pt-2 relative'
+          ? 'gap-0 pb-10 pt-1'
+          : 'gap-0 pb-10 pt-2 relative'
       }`}
     >
       {categories.map((cat, index) => {
@@ -654,7 +654,7 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                   <Lock c={`${compact ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
                 )}
               </div>
-              {!compact && (() => {
+              {(() => {
                 // 計算該分類的真實得分（依 pointValue 加總）
                 let totalPoints = 0;
                 let earnedPoints = 0;
@@ -671,18 +671,15 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                   const r = emp?.examRecords?.[exam.id];
                   return r && (r === 'passed' || r === 'failed' || (typeof r === 'object' && r.status));
                 });
+                const nameDisplay = cat.name && cat.name.length > 5
+                  ? String(cat.name).substring(0, 5) + '..'
+                  : String(cat.name || '');
                 return (
-                  <div className="absolute -bottom-7 flex flex-col items-center">
-                    <span
-                      className={`text-[9px] font-bold whitespace-nowrap ${
-                        isPassed ? 'text-gray-700' : 'text-gray-400'
-                      }`}
-                    >
-                      {cat.name && cat.name.length > 5
-                        ? String(cat.name).substring(0, 5) + '..'
-                        : String(cat.name || '')}
+                  <div className={`absolute flex flex-col items-center ${compact ? '-bottom-8' : '-bottom-8'}`}>
+                    <span className={`font-bold whitespace-nowrap ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-gray-700' : 'text-gray-400'}`}>
+                      {nameDisplay}
                     </span>
-                    <span className={`text-[9px] font-black ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
+                    <span className={`font-black ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
                       {hasSomeRecord ? `${catScore}分` : '–'}
                     </span>
                   </div>
