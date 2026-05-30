@@ -584,8 +584,8 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
     <div
       className={`flex items-center overflow-x-auto hide-scrollbar ${
         compact
-          ? 'gap-0 scale-75 sm:scale-90 origin-right'
-          : 'gap-0 pb-6 pt-2 relative'
+          ? 'gap-0'
+          : 'gap-0 pb-8 pt-2 relative'
       }`}
     >
       {categories.map((cat, index) => {
@@ -654,22 +654,35 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                   <Lock c={`${compact ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
                 )}
               </div>
-              {!compact && (
-                <div className="absolute -bottom-7 flex flex-col items-center">
-                  <span
-                    className={`text-[9px] font-bold whitespace-nowrap ${
-                      isPassed ? 'text-gray-700' : 'text-gray-400'
-                    }`}
-                  >
-                    {cat.name && cat.name.length > 5
-                      ? String(cat.name).substring(0, 5) + '..'
-                      : String(cat.name || '')}
-                  </span>
-                  <span className={`text-[9px] font-black ${isPassed ? 'text-[#3B82F6]' : 'text-gray-300'}`}>
-                    {passedCount}/{total}
-                  </span>
-                </div>
-              )}
+              {!compact && (() => {
+                // 計算該分類的平均分數
+                let totalScore = 0;
+                let scoredCount = 0;
+                catExams.forEach((exam) => {
+                  const record = emp?.examRecords?.[exam.id];
+                  if (record && typeof record === 'object' && record.score !== undefined) {
+                    totalScore += Number(record.score);
+                    scoredCount++;
+                  }
+                });
+                const avgScore = scoredCount > 0 ? Math.round(totalScore / scoredCount) : null;
+                return (
+                  <div className="absolute -bottom-7 flex flex-col items-center">
+                    <span
+                      className={`text-[9px] font-bold whitespace-nowrap ${
+                        isPassed ? 'text-gray-700' : 'text-gray-400'
+                      }`}
+                    >
+                      {cat.name && cat.name.length > 5
+                        ? String(cat.name).substring(0, 5) + '..'
+                        : String(cat.name || '')}
+                    </span>
+                    <span className={`text-[9px] font-black ${isPassed ? 'text-[#3B82F6]' : avgScore !== null ? 'text-[#D85E38]' : 'text-gray-300'}`}>
+                      {avgScore !== null ? `${avgScore}分` : '–'}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {index < categories.length - 1 && (
@@ -3317,51 +3330,46 @@ export default function App() {
                           key={emp.id}
                           className="bg-white rounded-[24px] p-5 soft-shadow border border-gray-100"
                         >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                {(emp.avatarId || emp.avatarUrl) ? (
-                                  <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
-                                ) : (
-                                  <User c="w-6 h-6 text-gray-400" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-black text-[15px] text-[#1A1A1A]">
-                                  {String(emp.name)}{' '}
-                                  <span className="text-[10px] text-gray-400 font-bold ml-1 bg-gray-100 px-2 py-0.5 rounded-full">
-                                    {String(emp.store)}
-                                  </span>
-                                </p>
-                                <div className="mt-1">
-                                  <RoleBadge role={emp.role} />
+                          <div className="mb-4">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
+                                  {(emp.avatarId || emp.avatarUrl) ? (
+                                    <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
+                                  ) : (
+                                    <User c="w-6 h-6 text-gray-400" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-black text-[15px] text-[#1A1A1A]">
+                                    {String(emp.name)}{' '}
+                                    <span className="text-[10px] text-gray-400 font-bold ml-1 bg-gray-100 px-2 py-0.5 rounded-full">
+                                      {String(emp.store)}
+                                    </span>
+                                  </p>
+                                  <div className="mt-1">
+                                    <RoleBadge role={emp.role} />
+                                  </div>
                                 </div>
                               </div>
+                              <p
+                                className="text-[9px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100 max-w-[110px] truncate shrink-0"
+                                title={currentCategoryName}
+                              >
+                                進行中:{' '}
+                                <span className={currentCategoryName === '已完成所有考核' ? 'text-[#2F7E5B]' : 'text-[#D85E38]'}>
+                                  {String(currentCategoryName)}
+                                </span>
+                              </p>
                             </div>
-
-                            {/* 成就解鎖 UI + 正在進行的考試分類名稱 */}
-                            <div className="shrink-0 mt-1 flex flex-col items-end">
+                            {/* 成就解鎖進度條 — 獨立一行避免重疊 */}
+                            <div className="mt-3 overflow-x-auto hide-scrollbar">
                               <AchievementProgress
                                 emp={emp}
                                 categories={categories}
                                 exams={exams}
                                 compact={true}
                               />
-                              <p
-                                className="text-[9px] font-bold text-gray-500 mt-2 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100 max-w-[120px] truncate"
-                                title={currentCategoryName}
-                              >
-                                進行中:{' '}
-                                <span
-                                  className={
-                                    currentCategoryName === '已完成所有考核'
-                                      ? 'text-[#2F7E5B]'
-                                      : 'text-[#D85E38]'
-                                  }
-                                >
-                                  {String(currentCategoryName)}
-                                </span>
-                              </p>
                             </div>
                           </div>
 
