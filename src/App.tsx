@@ -6027,3 +6027,8 @@ export default function App() {
       {toast && (
         <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-[#242424] text-white px-6 py-3.5 rounded-full z-[100] text-xs font-bold shadow-[0_10px_30px_rgba(0,0,0,0.2)] animate-in fade-in slide-in-from-bottom-4 flex items-center whitespace-nowrap">
           {String(toast)}
+        </div>
+      )}
+    </div>
+  );
+}
