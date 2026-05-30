@@ -580,150 +580,101 @@ const SignaturePad = ({ onSave }) => {
 
 // === 橫式成就解鎖進度條元件 ===
 const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
+  // 預先計算每個分類的分數資料
+  const catData = categories.map((cat, index) => {
+    const catExams = exams.filter(
+      (e) => e.categoryId === cat.id || (!e.categoryId && index === 0)
+    );
+    const total = catExams.length;
+    let passedCount = 0;
+    let totalPoints = 0;
+    let earnedPoints = 0;
+    catExams.forEach((exam) => {
+      const record = emp?.examRecords?.[exam.id];
+      const pv = exam.pointValue ?? 10;
+      totalPoints += pv;
+      if (record === 'passed' || (record && typeof record === 'object' && record.status === 'passed')) {
+        passedCount++;
+        earnedPoints += pv;
+      }
+    });
+    const isPassed = total > 0 && passedCount === total;
+    const catScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+    const hasSomeRecord = catExams.some((exam) => {
+      const r = emp?.examRecords?.[exam.id];
+      return r && (r === 'passed' || r === 'failed' || (typeof r === 'object' && r.status));
+    });
+    const nameDisplay = cat.name && cat.name.length > 5
+      ? String(cat.name).substring(0, 5) + '..'
+      : String(cat.name || '');
+    return { cat, isPassed, catScore, hasSomeRecord, nameDisplay, total };
+  });
+
+  const sz = compact ? 'w-7 h-7' : 'w-9 h-9';
+  const lineW = compact ? 'w-8' : 'w-12 sm:w-16';
+  const allPassed = catData.every(d => d.isPassed);
+
   return (
-    <div
-      className={`flex items-end overflow-x-auto hide-scrollbar ${
-        compact
-          ? 'gap-0 pt-1 pb-2'
-          : 'gap-0 pt-2 pb-2'
-      }`}
-    >
-      {categories.map((cat, index) => {
-        const catExams = exams.filter(
-          (e) => e.categoryId === cat.id || (!e.categoryId && index === 0)
-        );
-        const total = catExams.length;
-        let passedCount = 0;
-        catExams.forEach((exam) => {
-          const record = emp?.examRecords?.[exam.id];
-          if (
-            record === 'passed' ||
-            (record && typeof record === 'object' && record.status === 'passed')
-          )
-            passedCount++;
-        });
-        const isPassed = total > 0 && passedCount === total;
-
-        let isNextPassed = false;
-        if (index < categories.length - 1) {
-          const nextCat = categories[index + 1];
-          const nextCatExams = exams.filter(
-            (e) =>
-              e.categoryId === nextCat.id || (!e.categoryId && index + 1 === 0)
-          );
-          const nextTotal = nextCatExams.length;
-          let nextPassedCount = 0;
-          nextCatExams.forEach((exam) => {
-            const record = emp?.examRecords?.[exam.id];
-            if (
-              record === 'passed' ||
-              (record &&
-                typeof record === 'object' &&
-                record.status === 'passed')
-            )
-              nextPassedCount++;
-          });
-          isNextPassed = nextTotal > 0 && nextPassedCount === nextTotal;
-        }
-
-        return (
-          <div key={cat.id} className="flex items-center flex-shrink-0">
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`rounded-full flex items-center justify-center text-xs z-10 shadow-sm transition-colors duration-300
-                 ${compact ? 'w-6 h-6' : 'w-8 h-8'}
-                 ${
-                   isPassed
-                     ? 'bg-[#3B82F6] text-white border-none'
-                     : 'bg-white text-gray-300 border-2 border-gray-200'
-                 }`}
-              >
+    <div className="overflow-x-auto hide-scrollbar">
+      {/* 第一行：圓圈 + 連線 */}
+      <div className="flex items-center">
+        {catData.map(({ cat, isPassed }, index) => {
+          const nextPassed = index < catData.length - 1 ? catData[index + 1].isPassed : false;
+          return (
+            <div key={cat.id} className="flex items-center flex-shrink-0">
+              <div className={`rounded-full flex items-center justify-center shadow-sm transition-colors duration-300 ${sz} ${
+                isPassed ? 'bg-[#3B82F6] text-white' : 'bg-white text-gray-300 border-2 border-gray-200'
+              }`}>
                 {isPassed ? (
-                  <svg
-                    className={`${compact ? 'w-3 h-3' : 'w-5 h-5'}`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 ) : (
-                  <Lock c={`${compact ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
+                  <Lock c={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
                 )}
               </div>
-              {(() => {
-                // 計算該分類的真實得分（依 pointValue 加總）
-                let totalPoints = 0;
-                let earnedPoints = 0;
-                catExams.forEach((exam) => {
-                  const pv = exam.pointValue ?? 10;
-                  totalPoints += pv;
-                  const record = emp?.examRecords?.[exam.id];
-                  if (record === 'passed' || (record && typeof record === 'object' && record.status === 'passed')) {
-                    earnedPoints += pv;
-                  }
-                });
-                const catScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : null;
-                const hasSomeRecord = catExams.some((exam) => {
-                  const r = emp?.examRecords?.[exam.id];
-                  return r && (r === 'passed' || r === 'failed' || (typeof r === 'object' && r.status));
-                });
-                const nameDisplay = cat.name && cat.name.length > 5
-                  ? String(cat.name).substring(0, 5) + '..'
-                  : String(cat.name || '');
-                return (
-                  <div className="flex flex-col items-center">
-                    <span className={`font-bold whitespace-nowrap ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {nameDisplay}
-                    </span>
-                    <span className={`font-black ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
-                      {hasSomeRecord ? `${catScore}分` : '–'}
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {index < categories.length - 1 && (
-              <div
-                className={`h-1.5 transition-colors duration-300 ${
-                  compact ? 'w-6' : 'w-10 sm:w-14'
-                } ${isNextPassed ? 'bg-[#3B82F6]' : 'bg-gray-100'}`}
-              ></div>
-            )}
-
-            {index === categories.length - 1 && (
-              <>
-                <div
-                  className={`h-1.5 transition-colors duration-300 ${
-                    compact ? 'w-4' : 'w-6 sm:w-8'
-                  } ${isPassed ? 'bg-[#3B82F6]' : 'bg-gray-100'}`}
-                ></div>
-                <div
-                  className={`flex items-center justify-center rounded-full font-black shadow-sm z-10 transition-all duration-300 ${
+              {index < catData.length - 1 && (
+                <div className={`h-1.5 transition-colors duration-300 ${lineW} ${nextPassed ? 'bg-[#3B82F6]' : 'bg-gray-100'}`} />
+              )}
+              {index === catData.length - 1 && (
+                <>
+                  <div className={`h-1.5 transition-colors duration-300 ${compact ? 'w-4' : 'w-8'} ${isPassed ? 'bg-[#3B82F6]' : 'bg-gray-100'}`} />
+                  <div className={`flex items-center justify-center rounded-full font-black shadow-sm transition-all duration-300 ${
                     compact ? 'px-2 py-1 text-[9px]' : 'px-3 py-1.5 text-[11px]'
-                  } ${
-                    isPassed
-                      ? 'bg-[#3B82F6] text-white shadow-blue-500/30'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  ★ +100
-                </div>
-              </>
-            )}
-          </div>
-        );
-      })}
-      {categories.length === 0 && (
-        <span className="text-xs text-gray-400 font-bold">尚無分類資料</span>
-      )}
+                  } ${allPassed ? 'bg-[#3B82F6] text-white shadow-blue-500/30' : 'bg-gray-100 text-gray-400'}`}>
+                    ★ +100
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {/* 第二行：名稱 + 分數，對齊圓圈位置 */}
+      <div className="flex items-start mt-1.5">
+        {catData.map(({ cat, isPassed, catScore, hasSomeRecord, nameDisplay }, index) => {
+          const dotSize = compact ? 28 : 36;
+          const lineSize = compact ? 32 : 64;
+          const totalWidth = index < catData.length - 1
+            ? dotSize + lineSize
+            : dotSize;
+          return (
+            <div key={cat.id} className="flex flex-col items-center flex-shrink-0" style={{ width: totalWidth }}>
+              <span className={`font-bold whitespace-nowrap ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-gray-600' : 'text-gray-400'}`}>
+                {nameDisplay}
+              </span>
+              <span className={`font-black ${compact ? 'text-[8px]' : 'text-[9px]'} ${isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}`}>
+                {hasSomeRecord ? `${catScore}分` : '–'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
+
+
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
