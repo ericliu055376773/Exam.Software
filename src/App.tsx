@@ -5602,39 +5602,7 @@ export default function App() {
               </div>
               <span className="text-[10px] font-bold">考試</span>
             </button>
-            <button
-              onClick={handleRecordsTabClick}
-              className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${
-                activeTab === 'records' ? 'text-[#D85E38]' : 'text-gray-400'
-              } relative`}
-            >
-              <div
-                className={`p-2 rounded-full ${
-                  activeTab === 'records' ? 'bg-[#FCEEEA]' : 'bg-transparent'
-                }`}
-              >
-                <BarChart c="w-5 h-5" />
-                {recordsBadgeCount > 0 && (
-                  <span className="absolute top-1 right-8 w-3 h-3 bg-red-500 border border-white rounded-full flex items-center justify-center animate-pulse"></span>
-                )}
-              </div>
-              <span className="text-[10px] font-bold">平時紀錄</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('incidents')}
-              className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${
-                activeTab === 'incidents' ? 'text-red-500' : 'text-gray-400'
-              }`}
-            >
-              <div
-                className={`p-2 rounded-full ${
-                  activeTab === 'incidents' ? 'bg-red-50' : 'bg-transparent'
-                }`}
-              >
-                <AlertTriangle c="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-bold">檢討</span>
-            </button>
+
             <button
               onClick={() => setActiveTab('profile')}
               className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${
