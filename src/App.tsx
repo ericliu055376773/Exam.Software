@@ -2322,18 +2322,23 @@ export default function App() {
                         <button
                           onClick={async () => {
                             if (newCategoryName.trim()) {
-                              const newDoc = await addDoc(
-                                collection(db, 'examCategories'),
-                                {
-                                  name: newCategoryName.trim(),
-                                  order: categories.length,
-                                  createdAt: Date.now(),
-                                }
-                              );
-                              setIsAddingCategory(false);
-                              setNewCategoryName('');
-                              setActiveCategoryId(newDoc.id);
-                              showToast('新分類已建立');
+                              try {
+                                const newDoc = await addDoc(
+                                  collection(db, 'examCategories'),
+                                  {
+                                    name: newCategoryName.trim(),
+                                    order: categories.length,
+                                    createdAt: Date.now(),
+                                  }
+                                );
+                                setIsAddingCategory(false);
+                                setNewCategoryName('');
+                                setActiveCategoryId(newDoc.id);
+                                showToast('新分類已建立');
+                              } catch (err) {
+                                console.error('新增分類失敗:', err);
+                                showToast('新增分類失敗：' + (err.message || '請檢查網路或權限'));
+                              }
                             }
                           }}
                           className="bg-[#1A1A1A] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm"
@@ -2380,16 +2385,21 @@ export default function App() {
                             <button
                               onClick={async () => {
                                 if (editCategoryName.trim()) {
-                                  await updateDoc(
-                                    doc(
-                                      db,
-                                      'examCategories',
-                                      activeCategoryData.id
-                                    ),
-                                    { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60 }
-                                  );
-                                  setEditingCategoryId(null);
-                                  showToast('分類名稱及及格分數已更新');
+                                  try {
+                                    await updateDoc(
+                                      doc(
+                                        db,
+                                        'examCategories',
+                                        activeCategoryData.id
+                                      ),
+                                      { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60 }
+                                    );
+                                    setEditingCategoryId(null);
+                                    showToast('分類名稱及及格分數已更新');
+                                  } catch (err) {
+                                    console.error('更新分類失敗:', err);
+                                    showToast('更新分類失敗：' + (err.message || '請檢查網路或權限'));
+                                  }
                                 }
                               }}
                               className="bg-[#1A1A1A] text-white px-4 py-2 rounded-lg text-xs font-bold"
