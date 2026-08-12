@@ -746,6 +746,8 @@ export default function App() {
   const [examStartTime, setExamStartTime] = useState(null);
   const [examTimeRemaining, setExamTimeRemaining] = useState(null);
   const [examTimeUp, setExamTimeUp] = useState(false);
+  const [showTimedSection, setShowTimedSection] = useState(true);
+  const [showProctorSection, setShowProctorSection] = useState(false);
 
   // 人員名單狀態
   const [searchQuery, setSearchQuery] = useState('');
@@ -1383,7 +1385,7 @@ export default function App() {
       return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor')));
     });
     const isPassed = total === 0 || (allAnswered && score >= passingScore);
-    const isUnlocked = canEdit || isPreviousPassed;
+    const isUnlocked = true;
     isPreviousPassed = isPassed;
     return {
       ...cat,
@@ -2386,7 +2388,14 @@ export default function App() {
                               if (canEdit) handleCategoryDrop(cat.id);
                             }}
                             onClick={() => {
-                              if (cat.isUnlocked) setActiveCategoryId(cat.id);
+                              if (cat.isUnlocked) {
+                                setActiveCategoryId(cat.id);
+                                setExamStarted(false);
+                                setSelectedProctor('');
+                                setExamStartTime(null);
+                                setExamTimeRemaining(null);
+                                setExamTimeUp(false);
+                              }
                               else showToast('🔒 請先通過前一階段的所有測驗！');
                             }}
                             className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
@@ -2714,7 +2723,7 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {activeExams.length === 0 ? (
                         <div className="p-10 text-center text-gray-400 text-sm font-bold bg-white rounded-[24px] soft-shadow border border-gray-100">
                           此分類目前尚無考題
@@ -2724,41 +2733,33 @@ export default function App() {
                           const proctorTypeList = ['fill', 'essay', 'oral', 'practical'];
                           const timedExams = activeExams.filter((e) => !proctorTypeList.includes(e.type));
                           const proctorExams = activeExams.filter((e) => proctorTypeList.includes(e.type));
-                          const sortedExams = [...timedExams, ...proctorExams];
-                          let shownTimedHeader = false;
-                          let shownProctorHeader = false;
 
-                          return sortedExams.map((exam, idx) => {
-                            const isProctor = proctorTypeList.includes(exam.type);
-                            const globalIdx = activeExams.indexOf(exam);
-                            const headers = [];
-
-                            if (!isProctor && !shownTimedHeader && timedExams.length > 0) {
-                              shownTimedHeader = true;
-                              headers.push(
-                                <div key="timed-header" className="flex items-center gap-2 mb-3 mt-2">
-                                  <div className="flex items-center gap-1.5 bg-[#EBF2FF] px-3 py-1.5 rounded-full">
-                                    <span className="text-[11px] font-black text-[#3B82F6]">⏱ 計時題</span>
-                                  </div>
-                                  <span className="text-[10px] text-gray-400 font-bold">{timedExams.length} 題・自動批改</span>
-                                  <div className="flex-1 border-t border-dashed border-blue-200"></div>
-                                </div>
-                              );
-                            }
-                            if (isProctor && !shownProctorHeader && proctorExams.length > 0) {
-                              shownProctorHeader = true;
-                              headers.push(
-                                <div key="proctor-header" className="flex items-center gap-2 mb-3 mt-6">
-                                  <div className="flex items-center gap-1.5 bg-[#FCEEEA] px-3 py-1.5 rounded-full">
-                                    <span className="text-[11px] font-black text-[#D85E38]">👨‍🏫 需考官</span>
-                                  </div>
-                                  <span className="text-[10px] text-gray-400 font-bold">{proctorExams.length} 題・不計時</span>
-                                  <div className="flex-1 border-t border-dashed border-orange-200"></div>
-                                </div>
-                              );
-                            }
-
-                            const i = globalIdx;
+                          return (
+                            <>
+                              {timedExams.length > 0 && (
+                                <div className="rounded-[24px] overflow-hidden border border-blue-100 soft-shadow">
+                                  <button
+                                    onClick={() => setShowTimedSection(!showTimedSection)}
+                                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#EBF2FF] to-[#E0E7FF] hover:from-[#DBEAFE] hover:to-[#D6DCFF] transition-all"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
+                                        <span className="text-lg">💻</span>
+                                      </div>
+                                      <div className="text-left">
+                                        <h4 className="font-black text-[#3B82F6] text-sm">電腦測驗</h4>
+                                        <p className="text-[10px] text-[#3B82F6]/60 font-bold">{timedExams.length} 題・自動批改・計時</p>
+                                      </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showTimedSection ? 'rotate-180' : ''}`}>
+                                      <ChevronRight c="w-4 h-4 text-[#3B82F6] rotate-90" />
+                                    </div>
+                                  </button>
+                                  {showTimedSection && (
+                                    <div className="bg-white p-3 space-y-4">
+                                      {timedExams.map((exam) => {
+                                        const globalIdx = activeExams.indexOf(exam);
+                                        const i = globalIdx;
                           const empRecord =
                             currentUserData?.examRecords?.[exam.id];
                           const isPassed =
@@ -3112,10 +3113,9 @@ export default function App() {
                                     {editExamData.type === 'fill' && (
                                       <div>
                                         <label className="text-xs font-bold text-gray-500 mb-2 block">
-                                          設定正確解答 (完全比對)
+                                          設定正確解答（考官輸入密碼後顯示）
                                         </label>
-                                        <input
-                                          type="text"
+                                        <textarea
                                           value={editExamData.correctAnswer}
                                           onChange={(e) =>
                                             setEditExamData({
@@ -3123,8 +3123,8 @@ export default function App() {
                                               correctAnswer: e.target.value,
                                             })
                                           }
-                                          className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none"
-                                          placeholder="輸入標準答案"
+                                          className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[100px] resize-none focus:border-[#D85E38]"
+                                          placeholder="輸入標準答案，可換行輸入多行內容..."
                                         />
                                       </div>
                                     )}
@@ -3766,13 +3766,169 @@ export default function App() {
                             </div>
                           );
 
-                            return (
-                              <React.Fragment key={exam.id}>
-                                {headers}
-                                {card}
-                              </React.Fragment>
-                            );
-                          });
+                                        return card;
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {proctorExams.length > 0 && (
+                                <div className="rounded-[24px] overflow-hidden border border-orange-100 soft-shadow">
+                                  <button
+                                    onClick={() => setShowProctorSection(!showProctorSection)}
+                                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#FCEEEA] to-[#FEE2E2] hover:from-[#FDDDD6] hover:to-[#FECACA] transition-all"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
+                                        <span className="text-lg">👨‍🏫</span>
+                                      </div>
+                                      <div className="text-left">
+                                        <h4 className="font-black text-[#D85E38] text-sm">考官測驗</h4>
+                                        <p className="text-[10px] text-[#D85E38]/60 font-bold">{proctorExams.length} 題・需考官・不計時</p>
+                                      </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showProctorSection ? 'rotate-180' : ''}`}>
+                                      <ChevronRight c="w-4 h-4 text-[#D85E38] rotate-90" />
+                                    </div>
+                                  </button>
+                                  {showProctorSection && (
+                                    <div className="bg-white p-3 space-y-4">
+                                      {proctorExams.map((exam) => {
+                                        const globalIdx = activeExams.indexOf(exam);
+                                        const i = globalIdx;
+                                        const empRecord = currentUserData?.examRecords?.[exam.id];
+                                        const isPassed = empRecord?.status === 'passed' || empRecord === 'passed';
+                                        const isFailed = empRecord?.status === 'failed' || empRecord === 'failed';
+                                        const isPendingProctor = empRecord?.status === 'pending_proctor';
+                                        const isRetestRequested = empRecord?.retestRequested === true;
+                                        const qType = exam.type || 'basic';
+                                        const typeTags = {
+                                          fill: { label: '填空題', style: 'bg-[#FEF3C7] text-[#D97706]' },
+                                          essay: { label: '問答題', style: 'bg-[#FFE4E6] text-[#E11D48]' },
+                                          oral: { label: '口述', style: 'bg-[#DCFCE7] text-[#16A34A]' },
+                                          practical: { label: '現在考試', style: 'bg-[#FEE2E2] text-[#DC2626]' },
+                                          basic: { label: '基本任務', style: 'bg-gray-100 text-gray-600' },
+                                        };
+                                        const typeInfo = typeTags[qType] || typeTags['basic'];
+
+                                        if (canEdit && editingExamId === exam.id) {
+                                          return null;
+                                        }
+
+                                        const card = (
+                                          <div
+                                            key={exam.id}
+                                            className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${
+                                              isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : isPendingProctor ? 'border-l-4 border-l-orange-400' : ''
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                              <span className={`px-3 py-1 rounded-full text-[10px] font-black ${typeInfo.style}`}>{typeInfo.label}</span>
+                                              <span className="text-[10px] text-gray-400 font-bold">{exam.subtitle || exam.description || ''}</span>
+                                              {isPassed && <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">✓ 通過</span>}
+                                              {isFailed && <span className="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full font-bold">✗ 未通過</span>}
+                                              {isPendingProctor && <span className="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold">⏳ 待考官</span>}
+                                            </div>
+                                            <div className="bg-white p-5 rounded-[20px] shadow-sm border border-gray-100">
+                                              <h3 className="text-lg font-black text-[#1A1A1A] mb-3">{i + 1}. {exam.title}</h3>
+                                              {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl">{exam.description}</p>}
+
+                                              {!canEdit && isPendingProctor && (
+                                                <div className="mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
+                                                  <p className="text-xs text-orange-600 font-bold mb-2">等待考官審核中...</p>
+                                                  {isRetestRequested ? (
+                                                    <p className="text-[10px] text-orange-400">已送出重新測驗申請...請等待主管審核</p>
+                                                  ) : (
+                                                    <button
+                                                      onClick={() => {
+                                                        if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                                                        setProctorReviewModal({ show: true, examId: exam.id, proctorName: selectedProctor, password: '', verified: false });
+                                                      }}
+                                                      className="bg-orange-500 text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-orange-600 transition-colors"
+                                                    >
+                                                      考官評閱
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              )}
+
+                                              {!canEdit && !isPassed && !isPendingProctor && (qType === 'fill' || qType === 'essay') && (
+                                                <div className="mt-3">
+                                                  <textarea
+                                                    value={currentAnswers[exam.id] || ''}
+                                                    onChange={(e) => handleAnswerChange(exam.id, e.target.value)}
+                                                    className="w-full p-3 bg-[#F7F8FA] border border-gray-200 rounded-xl text-sm outline-none min-h-[80px] resize-none"
+                                                    placeholder={qType === 'fill' ? '請輸入答案...' : '請輸入你的回答...'}
+                                                  />
+                                                  {currentAnswers[exam.id]?.trim() && (
+                                                    <button onClick={() => submitAnswer(exam)} className="w-full mt-3 bg-[#5C6AC4] text-white py-3 rounded-xl font-bold text-sm">
+                                                      <Send c="w-4 h-4 mr-2 inline" /> 送出作答
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              )}
+
+                                              {!canEdit && !isPassed && !isPendingProctor && qType === 'oral' && (
+                                                <div className="mt-3 flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-green-200 bg-green-50/50">
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                                      <Mic c="w-5 h-5" />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-gray-500">請向考官口頭回答</p>
+                                                  </div>
+                                                  <button
+                                                    onClick={async () => {
+                                                      if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                                                      const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
+                                                      newRecords[exam.id] = { status: 'pending_proctor', timestamp: Date.now(), title: exam.title, mistakes: newRecords[exam.id]?.mistakes || 0, approver: selectedProctor, score: 0, pointValue: exam.pointValue ?? 10, userAnswer: '（口述作答）' };
+                                                      await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                                                      showToast('📝 已送出，請等待考官評分。');
+                                                    }}
+                                                    className="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50"
+                                                  >
+                                                    送出給考官
+                                                  </button>
+                                                </div>
+                                              )}
+
+                                              {!canEdit && !isPassed && !isPendingProctor && qType === 'practical' && (
+                                                <div className="mt-3 flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-red-200 bg-red-50/50">
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="w-10 h-10 rounded-full bg-red-100 text-red-500 flex items-center justify-center">
+                                                      <MonitorPlay c="w-5 h-5" />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-gray-500">請現場操作完成</p>
+                                                  </div>
+                                                  <button
+                                                    onClick={() => { if (!selectedProctor) { showToast('請先選擇考官！'); return; } setProctorModal({ show: true, examId: exam.id, proctorName: selectedProctor }); }}
+                                                    className="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50"
+                                                  >
+                                                    考官確認
+                                                  </button>
+                                                </div>
+                                              )}
+
+                                              {!canEdit && (isPassed || isFailed) && !isPendingProctor && (
+                                                <div className="mt-3">
+                                                  {isFailed && !isRetestRequested && (
+                                                    <button onClick={async () => { const nr = currentUserData.examRecords ? { ...currentUserData.examRecords } : {}; nr[exam.id] = { ...nr[exam.id], retestRequested: true }; await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: nr }); showToast('已送出重新測驗申請！'); }} className="text-xs text-[#D85E38] font-bold bg-[#FCEEEA] px-3 py-1.5 rounded-full">
+                                                      申請重新測驗
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                        return card;
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          );
                         })()
                       )}
 
