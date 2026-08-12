@@ -1413,6 +1413,26 @@ export default function App() {
 
     if (exam.type === 'tf' || exam.type === 'mc') {
       if (userAnswer === exam.correctAnswer) status = 'passed';
+    } else if (exam.type === 'multiSelect') {
+      try {
+        const userArr = typeof userAnswer === 'string' ? JSON.parse(userAnswer) : userAnswer;
+        const correctArr = typeof exam.correctAnswer === 'string' ? JSON.parse(exam.correctAnswer) : exam.correctAnswer;
+        if (Array.isArray(userArr) && Array.isArray(correctArr) &&
+            userArr.length === correctArr.length &&
+            userArr.sort().join(',') === correctArr.sort().join(',')) {
+          status = 'passed';
+        }
+      } catch { /* failed */ }
+    } else if (exam.type === 'ordering') {
+      try {
+        const userArr = typeof userAnswer === 'string' ? JSON.parse(userAnswer) : userAnswer;
+        const correctArr = typeof exam.correctAnswer === 'string' ? JSON.parse(exam.correctAnswer) : exam.correctAnswer;
+        if (Array.isArray(userArr) && Array.isArray(correctArr) &&
+            userArr.length === correctArr.length &&
+            userArr.every((v, i) => v === correctArr[i])) {
+          status = 'passed';
+        }
+      } catch { /* failed */ }
     } else if (exam.type === 'fill') {
       status = 'pending_proctor';
     } else if (exam.type === 'essay') {
@@ -2675,9 +2695,17 @@ export default function App() {
                               label: '選擇題',
                               style: 'bg-[#F3E8FF] text-[#9333EA]',
                             },
+                            multiSelect: {
+                              label: '複選題',
+                              style: 'bg-[#F0E6FF] text-[#7C3AED]',
+                            },
                             fill: {
                               label: '填空題',
                               style: 'bg-[#FEF3C7] text-[#D97706]',
+                            },
+                            ordering: {
+                              label: '順序題',
+                              style: 'bg-[#CFFAFE] text-[#0891B2]',
                             },
                             essay: {
                               label: '問答題',
@@ -2729,8 +2757,14 @@ export default function App() {
                                       <option value="mc">
                                         選擇題 (自動批改)
                                       </option>
+                                      <option value="multiSelect">
+                                        複選題 (自動批改)
+                                      </option>
                                       <option value="fill">
                                         填空題 (需考官)
+                                      </option>
+                                      <option value="ordering">
+                                        順序題 (自動批改)
                                       </option>
                                       <option value="essay">
                                         問答題 (考官審核)
@@ -2884,6 +2918,108 @@ export default function App() {
                                             </div>
                                           )
                                         )}
+                                      </div>
+                                    )}
+                                    {editExamData.type === 'multiSelect' && (
+                                      <div className="space-y-3">
+                                        <label className="text-xs font-bold text-gray-500 block">
+                                          設定選項（勾選所有正確答案）
+                                        </label>
+                                        {['A', 'B', 'C', 'D'].map(
+                                          (letter, idx) => (
+                                            <div key={letter} className="flex items-center gap-2">
+                                              <span className="w-6 font-black text-gray-400">{letter}.</span>
+                                              <input
+                                                type="text"
+                                                value={editExamData.options?.[idx] || ''}
+                                                onChange={(e) => {
+                                                  const newOpts = [...(editExamData.options || ['', '', '', ''])];
+                                                  newOpts[idx] = e.target.value;
+                                                  setEditExamData({ ...editExamData, options: newOpts });
+                                                }}
+                                                className="flex-1 p-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                                placeholder={`選項 ${letter}`}
+                                              />
+                                              <input
+                                                type="checkbox"
+                                                checked={(() => {
+                                                  try {
+                                                    const arr = typeof editExamData.correctAnswer === 'string' ? JSON.parse(editExamData.correctAnswer) : editExamData.correctAnswer;
+                                                    return Array.isArray(arr) && arr.includes(letter);
+                                                  } catch { return false; }
+                                                })()}
+                                                onChange={(e) => {
+                                                  let arr = [];
+                                                  try {
+                                                    arr = typeof editExamData.correctAnswer === 'string' ? JSON.parse(editExamData.correctAnswer) : (editExamData.correctAnswer || []);
+                                                  } catch { arr = []; }
+                                                  if (!Array.isArray(arr)) arr = [];
+                                                  if (e.target.checked) {
+                                                    arr = [...arr, letter].sort();
+                                                  } else {
+                                                    arr = arr.filter((x) => x !== letter);
+                                                  }
+                                                  setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(arr) });
+                                                }}
+                                                className="w-4 h-4 ml-2 accent-[#7C3AED]"
+                                              />
+                                            </div>
+                                          )
+                                        )}
+                                        <p className="text-[10px] text-gray-400">請勾選右側核取方塊選擇所有正確答案</p>
+                                      </div>
+                                    )}
+                                    {editExamData.type === 'ordering' && (
+                                      <div className="space-y-3">
+                                        <label className="text-xs font-bold text-gray-500 block">
+                                          設定正確順序（由上到下為正確排列）
+                                        </label>
+                                        {(() => {
+                                          let items = [];
+                                          try {
+                                            items = typeof editExamData.correctAnswer === 'string' ? JSON.parse(editExamData.correctAnswer) : (editExamData.correctAnswer || []);
+                                          } catch { items = []; }
+                                          if (!Array.isArray(items)) items = [];
+                                          return (
+                                            <>
+                                              {items.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-2">
+                                                  <span className="w-6 font-black text-[#0891B2] text-sm">{idx + 1}.</span>
+                                                  <input
+                                                    type="text"
+                                                    value={item}
+                                                    onChange={(e) => {
+                                                      const newItems = [...items];
+                                                      newItems[idx] = e.target.value;
+                                                      setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(newItems) });
+                                                    }}
+                                                    className="flex-1 p-2.5 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                                    placeholder={`第 ${idx + 1} 項`}
+                                                  />
+                                                  <button
+                                                    onClick={() => {
+                                                      const newItems = items.filter((_, i) => i !== idx);
+                                                      setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(newItems) });
+                                                    }}
+                                                    className="text-red-400 hover:text-red-600 p-1"
+                                                  >
+                                                    <XCircle c="w-4 h-4" />
+                                                  </button>
+                                                </div>
+                                              ))}
+                                              <button
+                                                onClick={() => {
+                                                  const newItems = [...items, ''];
+                                                  setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(newItems) });
+                                                }}
+                                                className="w-full py-2.5 bg-[#CFFAFE] text-[#0891B2] rounded-lg text-xs font-bold hover:bg-[#A5F3FC] transition-colors flex items-center justify-center"
+                                              >
+                                                <PlusCircle c="w-4 h-4 mr-1" /> 新增項目
+                                              </button>
+                                              <p className="text-[10px] text-gray-400">考試時選項會隨機打亂，員工需拖曳排回正確順序</p>
+                                            </>
+                                          );
+                                        })()}
                                       </div>
                                     )}
                                     {editExamData.type === 'fill' && (
@@ -3275,6 +3411,101 @@ export default function App() {
                                         )}
                                       </div>
                                     )}
+                                    {qType === 'multiSelect' && (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {['A', 'B', 'C', 'D'].map((letter, idx) => {
+                                          if (!exam.options?.[idx]) return null;
+                                          let selected = [];
+                                          try { selected = typeof currentAnswers[exam.id] === 'string' ? JSON.parse(currentAnswers[exam.id]) : (currentAnswers[exam.id] || []); } catch { selected = []; }
+                                          if (!Array.isArray(selected)) selected = [];
+                                          const isSelected = selected.includes(letter);
+                                          return (
+                                            <button
+                                              key={letter}
+                                              onClick={() => {
+                                                let newSelected;
+                                                if (isSelected) {
+                                                  newSelected = selected.filter((x) => x !== letter);
+                                                } else {
+                                                  newSelected = [...selected, letter].sort();
+                                                }
+                                                handleAnswerChange(exam.id, JSON.stringify(newSelected));
+                                              }}
+                                              className={`flex items-center p-3.5 border-2 rounded-xl text-left transition-all ${
+                                                isSelected
+                                                  ? 'border-[#7C3AED] bg-[#F0E6FF] text-[#7C3AED]'
+                                                  : 'border-gray-100 bg-white hover:border-[#7C3AED]/30 text-gray-600'
+                                              }`}
+                                            >
+                                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs mr-3 border-2 ${
+                                                isSelected ? 'bg-[#7C3AED] text-white border-[#7C3AED]' : 'bg-gray-100 text-gray-500 border-gray-200'
+                                              }`}>
+                                                {isSelected ? '✓' : letter}
+                                              </span>
+                                              <span className="font-bold text-sm">{exam.options?.[idx] || ''}</span>
+                                            </button>
+                                          );
+                                        })}
+                                        <p className="text-[10px] text-gray-400 col-span-full">可選擇多個答案</p>
+                                      </div>
+                                    )}
+                                    {qType === 'ordering' && (
+                                      <div className="space-y-4">
+                                        {(() => {
+                                          let correctItems = [];
+                                          try { correctItems = typeof exam.correctAnswer === 'string' ? JSON.parse(exam.correctAnswer) : (exam.correctAnswer || []); } catch { correctItems = []; }
+                                          if (!Array.isArray(correctItems) || correctItems.length === 0) return <p className="text-gray-400 text-sm">此題尚未設定順序項目</p>;
+
+                                          let userOrder = [];
+                                          try { userOrder = typeof currentAnswers[exam.id] === 'string' ? JSON.parse(currentAnswers[exam.id]) : (currentAnswers[exam.id] || []); } catch { userOrder = []; }
+                                          if (!Array.isArray(userOrder)) userOrder = [];
+
+                                          const remaining = correctItems.filter((item) => !userOrder.includes(item));
+
+                                          return (
+                                            <>
+                                              <div>
+                                                <label className="text-[11px] font-bold text-[#0891B2] block mb-2">排列區（點擊可移除）</label>
+                                                <div className="space-y-2 min-h-[48px]">
+                                                  {userOrder.length === 0 && <p className="text-gray-300 text-xs p-3 border-2 border-dashed rounded-xl text-center">點擊下方選項加入排列</p>}
+                                                  {userOrder.map((item, idx) => (
+                                                    <div
+                                                      key={`placed-${idx}`}
+                                                      onClick={() => {
+                                                        const newOrder = userOrder.filter((_, i) => i !== idx);
+                                                        handleAnswerChange(exam.id, JSON.stringify(newOrder));
+                                                      }}
+                                                      className="flex items-center p-3 bg-[#CFFAFE] border-2 border-[#0891B2]/30 rounded-xl cursor-pointer hover:bg-[#A5F3FC] transition-colors"
+                                                    >
+                                                      <span className="w-7 h-7 rounded-full bg-[#0891B2] text-white flex items-center justify-center font-black text-xs mr-3">{idx + 1}</span>
+                                                      <span className="font-bold text-sm text-[#0891B2]">{item}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <label className="text-[11px] font-bold text-gray-400 block mb-2">選項（點擊加入排列）</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {remaining.map((item, idx) => (
+                                                    <button
+                                                      key={`remaining-${idx}`}
+                                                      onClick={() => {
+                                                        const newOrder = [...userOrder, item];
+                                                        handleAnswerChange(exam.id, JSON.stringify(newOrder));
+                                                      }}
+                                                      className="px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-[#0891B2] hover:bg-[#CFFAFE]/30 transition-colors"
+                                                    >
+                                                      {item}
+                                                    </button>
+                                                  ))}
+                                                  {remaining.length === 0 && <p className="text-[10px] text-gray-300">所有項目已排列完成</p>}
+                                                </div>
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
                                     {qType === 'fill' && (
                                       <div>
                                         <input
@@ -3307,12 +3538,12 @@ export default function App() {
                                       </div>
                                     )}
                                     {!canEdit &&
-                                      ['tf', 'mc', 'fill', 'essay'].includes(
+                                      ['tf', 'mc', 'multiSelect', 'ordering', 'fill', 'essay'].includes(
                                         qType
                                       ) &&
                                       currentAnswers[exam.id] !== undefined &&
-                                      currentAnswers[exam.id].trim() !== '' && (
-                                        examTimeUp && ['tf', 'mc'].includes(qType) ? (
+                                      String(currentAnswers[exam.id]).trim() !== '' && (
+                                        examTimeUp && ['tf', 'mc', 'multiSelect', 'ordering'].includes(qType) ? (
                                           <div className="w-full mt-4 bg-red-100 text-red-600 py-3.5 rounded-xl font-bold flex items-center justify-center">
                                             ⏰ 時間已到，無法作答此題
                                           </div>
@@ -6323,4 +6554,3 @@ export default function App() {
     </div>
   );
 }
-
