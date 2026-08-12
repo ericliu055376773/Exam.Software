@@ -2242,80 +2242,109 @@ export default function App() {
                 </div>
 
                 {!canEdit && !examStarted ? (
-                  <div className="bg-white p-8 rounded-[32px] soft-shadow mt-6 flex flex-col items-center justify-center text-center border border-gray-100 animate-in zoom-in-95">
-                    <div className="w-20 h-20 bg-[#FCEEEA] rounded-full flex items-center justify-center mb-6">
-                      <User c="w-10 h-10 text-[#D85E38]" />
-                    </div>
-                    <h3 className="font-black text-xl text-[#1A1A1A] mb-2">
-                      準備開始測驗
-                    </h3>
-                    <p className="text-xs text-gray-500 font-bold mb-4">
-                      請先選擇本場次的主考官，選定後即可進入題庫作答。
-                    </p>
-                    {(() => {
-                      const activeCat = categories.find((c) => c.id === activeCategoryId);
-                      const tl = activeCat?.timeLimit;
-                      const proctorTypes = ['fill', 'essay', 'oral'];
-                      const timedCount = activeExams.filter((e) => !proctorTypes.includes(e.type)).length;
-                      const proctorCount = activeExams.filter((e) => proctorTypes.includes(e.type)).length;
-                      return tl && tl > 0 ? (
-                        <div className="w-full bg-[#EBF2FF] p-4 rounded-xl mb-6 text-left">
-                          <p className="text-sm font-black text-[#3B82F6] mb-1">⏱ 限時 {tl} 分鐘</p>
-                          <p className="text-[11px] text-[#3B82F6]/70 font-bold">
-                            計時題目 {timedCount} 題（是非 / 選擇）
-                            {proctorCount > 0 && `，不計時 ${proctorCount} 題（需考官）`}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="mb-4" />
-                      );
-                    })()}
+                  <>
+                    <div className="relative mt-4 pt-2 mb-4">
+                      <button
+                        onClick={() => {
+                          if (categoryTabsRef.current) {
+                            categoryTabsRef.current.scrollBy({ left: -150, behavior: 'smooth' });
+                          }
+                        }}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
+                        style={{ marginLeft: '-4px' }}
+                      >
+                        <ChevronLeft c="w-4 h-4 text-gray-600" />
+                      </button>
 
-                    <div className="w-full text-left mb-8">
-                      <label className="text-[11px] font-bold text-gray-400 block mb-2 ml-1">
-                        本場考官姓名
-                      </label>
-                      <div className="relative">
+                      <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
+                        {enrichedCategories.map((cat, idx) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => {
+                              setActiveCategoryId(cat.id);
+                              setExamStarted(false);
+                              setSelectedProctor('');
+                              setExamStartTime(null);
+                              setExamTimeRemaining(null);
+                              setExamTimeUp(false);
+                            }}
+                            className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
+                              activeCategoryId === cat.id
+                                ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
+                                : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
+                            }`}
+                          >
+                            {String(cat.name)}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (categoryTabsRef.current) {
+                            categoryTabsRef.current.scrollBy({ left: 150, behavior: 'smooth' });
+                          }
+                        }}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
+                        style={{ marginRight: '-4px' }}
+                      >
+                        <ChevronRight c="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-[24px] soft-shadow border border-gray-100 animate-in fade-in">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-[#FCEEEA] rounded-full flex items-center justify-center">
+                          <User c="w-6 h-6 text-[#D85E38]" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-[#1A1A1A] text-sm">選擇考官</h4>
+                          <p className="text-[10px] text-gray-400 font-bold">選定後即可進入題庫作答</p>
+                        </div>
+                      </div>
+                      {(() => {
+                        const activeCat = categories.find((c) => c.id === activeCategoryId);
+                        const tl = activeCat?.timeLimit;
+                        const proctorTypes = ['fill', 'essay', 'oral'];
+                        const timedCount = activeExams.filter((e) => !proctorTypes.includes(e.type)).length;
+                        const proctorCount = activeExams.filter((e) => proctorTypes.includes(e.type)).length;
+                        return tl && tl > 0 ? (
+                          <div className="w-full bg-[#EBF2FF] p-3 rounded-xl mb-4">
+                            <p className="text-xs font-black text-[#3B82F6]">⏱ 限時 {tl} 分鐘</p>
+                            <p className="text-[10px] text-[#3B82F6]/70 font-bold">
+                              計時 {timedCount} 題{proctorCount > 0 && `，不計時 ${proctorCount} 題`}
+                            </p>
+                          </div>
+                        ) : null;
+                      })()}
+                      <div className="flex gap-2">
                         <select
                           value={selectedProctor}
                           onChange={(e) => setSelectedProctor(e.target.value)}
-                          className="w-full bg-[#F0F2F5] p-4 rounded-[20px] text-sm font-bold text-[#1A1A1A] outline-none border-none focus:ring-2 focus:ring-[#D85E38]/50 appearance-none"
+                          className="flex-1 bg-[#F0F2F5] p-3.5 rounded-xl text-sm font-bold text-[#1A1A1A] outline-none appearance-none"
                         >
-                          <option value="">請選擇...</option>
+                          <option value="">請選擇考官...</option>
                           {employees
-                            .filter(
-                              (e) =>
-                                e.store === currentUserData?.store &&
-                                e.id !== currentUserData?.id
-                            )
+                            .filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id)
                             .map((e) => (
-                              <option key={e.id} value={e.name}>
-                                {String(e.name)} ({String(e.role)})
-                              </option>
+                              <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                             ))}
                         </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-400">
-                          <ChevronRight c="w-4 h-4" />
-                        </div>
+                        <button
+                          onClick={() => {
+                            if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                            setExamStarted(true);
+                            setExamStartTime(Date.now());
+                            setExamTimeUp(false);
+                            setExamTimeRemaining(null);
+                          }}
+                          className="bg-[#D85E38] text-white px-6 py-3.5 rounded-xl font-bold text-sm shadow-lg hover:bg-[#C25330] transition-all active:scale-95 whitespace-nowrap"
+                        >
+                          開始考試
+                        </button>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => {
-                        if (!selectedProctor) {
-                          showToast('請先選擇考官！');
-                          return;
-                        }
-                        setExamStarted(true);
-                        setExamStartTime(Date.now());
-                        setExamTimeUp(false);
-                        setExamTimeRemaining(null);
-                      }}
-                      className="w-full bg-[#D85E38] text-white py-4 rounded-full font-bold shadow-lg hover:bg-[#C25330] transition-transform active:scale-95 tracking-widest"
-                    >
-                      開始考試
-                    </button>
-                  </div>
+                  </>
                 ) : (
                   <>
                     {!canEdit && examStarted && (
