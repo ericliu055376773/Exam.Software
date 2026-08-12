@@ -2840,11 +2840,28 @@ export default function App() {
                                         />
                                       </div>
                                     )}
-                                    {(editExamData.type === 'oral' ||
-                                      editExamData.type === 'practical') && (
+                                    {editExamData.type === 'practical' && (
                                       <p className="text-xs text-gray-500 font-bold">
                                         此題型由現場考官人工確認與批改，無須設定標準答案。
                                       </p>
+                                    )}
+                                    {editExamData.type === 'oral' && (
+                                      <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-2 block">
+                                          標準答案（考官輸入密碼後才會顯示）
+                                        </label>
+                                        <textarea
+                                          value={editExamData.correctAnswer}
+                                          onChange={(e) =>
+                                            setEditExamData({
+                                              ...editExamData,
+                                              correctAnswer: e.target.value,
+                                            })
+                                          }
+                                          className="w-full p-3 bg-white border border-gray-200 rounded-lg outline-none font-bold text-[#1A1A1A] text-sm focus:border-[#D85E38] min-h-[80px] resize-none"
+                                          placeholder="輸入此口述題的標準答案或評分要點..."
+                                        />
+                                      </div>
                                     )}
                                   </div>
                                   {/* 題目分數設定 */}
@@ -3253,27 +3270,64 @@ export default function App() {
                                           </p>
                                         </div>
                                         {!canEdit && (
-                                          <button
-                                            onClick={() => {
-                                              if (!selectedProctor) {
-                                                showToast(
-                                                  '請先在上方選擇本場考官！'
-                                                );
-                                                return;
-                                              }
-                                              setProctorModal({
-                                                show: true,
-                                                examId: exam.id,
-                                                proctorName: selectedProctor,
-                                              });
-                                            }}
-                                            className="flex items-center gap-2 border-2 border-gray-200 bg-white px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors"
-                                          >
-                                            <Square c="w-5 h-5 text-gray-400" />{' '}
-                                            <span className="font-bold text-sm text-gray-600">
-                                              考官確認
-                                            </span>
-                                          </button>
+                                          qType === 'oral' ? (
+                                            <button
+                                              onClick={async () => {
+                                                if (!selectedProctor) {
+                                                  showToast('請先在上方選擇本場考官！');
+                                                  return;
+                                                }
+                                                const newRecords = currentUserData.examRecords
+                                                  ? { ...currentUserData.examRecords }
+                                                  : {};
+                                                const prevMistakes = newRecords[exam.id]?.mistakes || 0;
+                                                const pointValue = exam.pointValue ?? 10;
+                                                newRecords[exam.id] = {
+                                                  ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}),
+                                                  status: 'pending_proctor',
+                                                  timestamp: Date.now(),
+                                                  title: exam.title,
+                                                  mistakes: prevMistakes,
+                                                  approver: selectedProctor,
+                                                  score: 0,
+                                                  pointValue,
+                                                  userAnswer: '（口述作答，請考官現場確認）',
+                                                };
+                                                await updateDoc(doc(db, 'employees', currentUserData.id), {
+                                                  examRecords: newRecords,
+                                                });
+                                                showToast('📝 已送出，請等待考官輸入密碼評分。');
+                                              }}
+                                              className="flex items-center gap-2 border-2 border-gray-200 bg-white px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                                            >
+                                              <Square c="w-5 h-5 text-gray-400" />{' '}
+                                              <span className="font-bold text-sm text-gray-600">
+                                                送出給考官
+                                              </span>
+                                            </button>
+                                          ) : (
+                                            <button
+                                              onClick={() => {
+                                                if (!selectedProctor) {
+                                                  showToast(
+                                                    '請先在上方選擇本場考官！'
+                                                  );
+                                                  return;
+                                                }
+                                                setProctorModal({
+                                                  show: true,
+                                                  examId: exam.id,
+                                                  proctorName: selectedProctor,
+                                                });
+                                              }}
+                                              className="flex items-center gap-2 border-2 border-gray-200 bg-white px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                                            >
+                                              <Square c="w-5 h-5 text-gray-400" />{' '}
+                                              <span className="font-bold text-sm text-gray-600">
+                                                考官確認
+                                              </span>
+                                            </button>
+                                          )
                                         )}
                                       </div>
                                     )}
