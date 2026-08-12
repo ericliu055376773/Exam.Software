@@ -952,8 +952,11 @@ export default function App() {
   };
 
   let pendingRetests = [];
-  if (canEdit) {
-    employees.forEach((emp) => {
+  if (canEdit || isGrader) {
+    const retestTargetEmps = canEdit
+      ? employees
+      : employees.filter((e) => e.store === currentUserData?.store);
+    retestTargetEmps.forEach((emp) => {
       if (emp.examRecords) {
         Object.entries(emp.examRecords).forEach(([examId, record]) => {
           if (record && typeof record === 'object' && record.retestRequested) {
@@ -976,14 +979,14 @@ export default function App() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      canEdit &&
+      (canEdit || isGrader) &&
       totalAdminNotifications > 0 &&
       !hasShownLoginNotice
     ) {
       setShowNotificationModal(true);
       setHasShownLoginNotice(true);
     }
-  }, [isAuthenticated, canEdit, totalAdminNotifications, hasShownLoginNotice]);
+  }, [isAuthenticated, canEdit, isGrader, totalAdminNotifications, hasShownLoginNotice]);
 
   function showToast(msg) {
     setToast(msg);
@@ -1780,7 +1783,7 @@ export default function App() {
       <style>{customStyles}</style>
 
       {/* 系統通知彈出視窗 */}
-      {showNotificationModal && canEdit && (
+      {showNotificationModal && (canEdit || isGrader) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col border-none">
             <div className="flex justify-between items-center mb-6">
@@ -1822,28 +1825,44 @@ export default function App() {
                 </div>
               )}
               {pendingRetests.length > 0 && (
-                <div
-                  onClick={() => {
-                    setShowNotificationModal(false);
-                    setActiveTab('profile');
-                  }}
-                  className="bg-[#F0F2F5] p-5 rounded-[24px] border-none soft-shadow cursor-pointer hover:bg-[#E3E5E8] transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-orange-100 p-2.5 rounded-full">
-                        <RefreshCw c="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-[#1A1A1A] text-sm">
-                          重新測驗申請
-                        </h4>
-                        <p className="text-[11px] text-gray-500 mt-0.5">
-                          有 {pendingRetests.length} 筆重測申請等待處理
-                        </p>
-                      </div>
+                <div className="bg-[#F0F2F5] p-5 rounded-[24px] border-none soft-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-orange-100 p-2.5 rounded-full">
+                      <RefreshCw c="w-5 h-5 text-orange-600" />
                     </div>
-                    <ChevronRight c="w-5 h-5 text-gray-400" />
+                    <div>
+                      <h4 className="font-bold text-[#1A1A1A] text-sm">
+                        重新測驗申請
+                      </h4>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        有 {pendingRetests.length} 筆重測申請等待處理
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto hide-scrollbar">
+                    {pendingRetests.map((rt, idx) => (
+                      <div key={`${rt.empId}-${rt.examId}`} className="bg-white p-3.5 rounded-xl flex items-center justify-between shadow-sm border border-gray-100">
+                        <div>
+                          <p className="text-sm font-bold text-[#1A1A1A]">{rt.empName}</p>
+                          <p className="text-[11px] text-gray-400">{rt.store} · {rt.examTitle}</p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            const emp = employees.find(e => e.id === rt.empId);
+                            if (!emp) return;
+                            const newRecords = { ...emp.examRecords };
+                            delete newRecords[rt.examId];
+                            await updateDoc(doc(db, 'employees', rt.empId), {
+                              examRecords: newRecords,
+                            });
+                            showToast(`已核准 ${rt.empName} 重考：${rt.examTitle}`);
+                          }}
+                          className="px-3 py-1.5 bg-[#2F7E5B] text-white rounded-full text-[11px] font-bold hover:bg-[#256348] transition-colors shadow-sm"
+                        >
+                          核准重考
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -2003,7 +2022,7 @@ export default function App() {
                 <Settings c="w-4 h-4" />
               </button>
             )}
-            {canEdit && (
+            {(canEdit || (isGrader && pendingRetests.length > 0)) && (
               <button
                 onClick={() => setShowNotificationModal(true)}
                 className="relative bg-white/10 p-2.5 rounded-full hover:bg-white/20 transition-all group cursor-pointer border border-white/5"
@@ -2503,6 +2522,10 @@ export default function App() {
                         <button
                           onClick={async () => {
                             try {
+                              // 將現有考題的 order 全部 +1，讓新考題排在最上方
+                              for (const e of activeExams) {
+                                await updateDoc(doc(db, 'exams', e.id), { order: (e.order ?? 0) + 1 });
+                              }
                               const newDocRef = await addDoc(
                                 collection(db, 'exams'),
                                 {
@@ -2514,7 +2537,7 @@ export default function App() {
                                   options: ['', '', '', ''],
                                   correctAnswer: 'O',
                                   pointValue: 10,
-                                  order: activeExams.length,
+                                  order: 0,
                                   createdAt: Date.now(),
                                 }
                               );
@@ -2886,6 +2909,34 @@ export default function App() {
                             >
                               {canEdit && (
                                 <div className="absolute top-5 right-5 flex gap-2 z-20">
+                                  <button
+                                    onClick={async () => {
+                                      if (i === 0) return;
+                                      const prev = activeExams[i - 1];
+                                      const currOrder = exam.order ?? i;
+                                      const prevOrder = prev.order ?? (i - 1);
+                                      await updateDoc(doc(db, 'exams', exam.id), { order: prevOrder });
+                                      await updateDoc(doc(db, 'exams', prev.id), { order: currOrder });
+                                    }}
+                                    className={`p-2 bg-white rounded-full shadow-sm transition-colors ${i === 0 ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-[#5C6AC4]'}`}
+                                    title="上移"
+                                  >
+                                    <ChevronLeft c="w-4 h-4 rotate-90" />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (i === activeExams.length - 1) return;
+                                      const next = activeExams[i + 1];
+                                      const currOrder = exam.order ?? i;
+                                      const nextOrder = next.order ?? (i + 1);
+                                      await updateDoc(doc(db, 'exams', exam.id), { order: nextOrder });
+                                      await updateDoc(doc(db, 'exams', next.id), { order: currOrder });
+                                    }}
+                                    className={`p-2 bg-white rounded-full shadow-sm transition-colors ${i === activeExams.length - 1 ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-[#5C6AC4]'}`}
+                                    title="下移"
+                                  >
+                                    <ChevronRight c="w-4 h-4 rotate-90" />
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setEditingExamId(exam.id);
@@ -3533,8 +3584,10 @@ export default function App() {
                                                 {!record.retestRequested ? (
                                                   <button
                                                     onClick={async () => {
+                                                      const newRecords = { ...emp.examRecords };
+                                                      delete newRecords[exam.id];
                                                       await updateDoc(doc(db, 'employees', emp.id), {
-                                                        [`examRecords.${exam.id}`]: { ...record, retestRequested: true }
+                                                        examRecords: newRecords,
                                                       });
                                                       showToast(`已為 ${emp.name} 開放重考：${exam.title}`);
                                                     }}
@@ -3543,9 +3596,19 @@ export default function App() {
                                                     開放重考
                                                   </button>
                                                 ) : (
-                                                  <span className="text-[9px] font-bold text-[#D85E38] bg-[#FCEEEA] px-2.5 py-1 rounded-full mt-0.5">
-                                                    重考申請中
-                                                  </span>
+                                                  <button
+                                                    onClick={async () => {
+                                                      const newRecords = { ...emp.examRecords };
+                                                      delete newRecords[exam.id];
+                                                      await updateDoc(doc(db, 'employees', emp.id), {
+                                                        examRecords: newRecords,
+                                                      });
+                                                      showToast(`已核准 ${emp.name} 重考：${exam.title}`);
+                                                    }}
+                                                    className="text-[9px] font-bold text-white bg-orange-500 px-2.5 py-1 rounded-full hover:bg-orange-600 transition-colors shadow-sm mt-0.5 animate-pulse"
+                                                  >
+                                                    核准重考
+                                                  </button>
                                                 )}
                                               </div>
                                             </div>
