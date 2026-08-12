@@ -800,6 +800,7 @@ export default function App() {
   const [editCategoryPassingScore, setEditCategoryPassingScore] = useState(60);
   const [editCategoryTimeLimit, setEditCategoryTimeLimit] = useState(0);
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
+  const [deleteCategoryConfirmName, setDeleteCategoryConfirmName] = useState('');
 
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [editEmployeeData, setEditEmployeeData] = useState({});
@@ -2580,35 +2581,23 @@ export default function App() {
                                 <Edit c="w-4 h-4" />
                               </button>
                               {deletingCategoryId === activeCategoryData.id ? (
-                                <button
-                                  onClick={async () => {
-                                    await deleteDoc(
-                                      doc(
-                                        db,
-                                        'examCategories',
-                                        activeCategoryData.id
-                                      )
-                                    );
-                                    setDeletingCategoryId(null);
-                                    setActiveCategoryId(
-                                      categories.length > 1
-                                        ? categories.find(
-                                            (c) =>
-                                              c.id !== activeCategoryData.id
-                                          ).id
-                                        : null
-                                    );
-                                    showToast('分類已刪除');
-                                  }}
-                                  className="bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold animate-in fade-in"
-                                >
-                                  確定刪除?
-                                </button>
+                                <div className="flex items-center gap-2 animate-in fade-in">
+                                  <button
+                                    onClick={() => {
+                                      setDeletingCategoryId(null);
+                                      setDeleteCategoryConfirmName('');
+                                    }}
+                                    className="text-gray-500 text-xs font-bold bg-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                                  >
+                                    取消
+                                  </button>
+                                </div>
                               ) : (
                                 <button
-                                  onClick={() =>
-                                    setDeletingCategoryId(activeCategoryData.id)
-                                  }
+                                  onClick={() => {
+                                    setDeletingCategoryId(activeCategoryData.id);
+                                    setDeleteCategoryConfirmName('');
+                                  }}
                                   className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-full transition-colors"
                                 >
                                   <Trash2 c="w-4 h-4" />
@@ -2617,6 +2606,66 @@ export default function App() {
                             </div>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {canEdit && deletingCategoryId === activeCategoryData?.id && (
+                      <div className="bg-red-50 p-5 rounded-[24px] border-2 border-red-200 mb-5 animate-in fade-in">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <Trash2 c="w-5 h-5 text-red-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-black text-red-600 text-sm">刪除分類「{activeCategoryData?.name}」</h4>
+                            <p className="text-[10px] text-red-400">此操作無法復原！底下 {activeExams.length} 題考題也將會失去分類歸屬</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-red-500 font-bold mb-2">
+                          請輸入分類名稱「<span className="text-red-700">{activeCategoryData?.name}</span>」來確認刪除：
+                        </p>
+                        <input
+                          type="text"
+                          value={deleteCategoryConfirmName}
+                          onChange={(e) => setDeleteCategoryConfirmName(e.target.value)}
+                          className="w-full p-3 border-2 border-red-200 rounded-xl outline-none font-bold text-sm text-red-700 bg-white focus:border-red-400 mb-3"
+                          placeholder={`請輸入「${activeCategoryData?.name}」`}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              if (deleteCategoryConfirmName.trim() === activeCategoryData?.name) {
+                                try {
+                                  await deleteDoc(doc(db, 'examCategories', activeCategoryData.id));
+                                  setDeletingCategoryId(null);
+                                  setDeleteCategoryConfirmName('');
+                                  setActiveCategoryId(null);
+                                  showToast('分類已刪除');
+                                } catch (err) {
+                                  showToast('刪除失敗：' + (err.message || '未知錯誤'));
+                                }
+                              } else {
+                                showToast('名稱不符，請重新輸入！');
+                              }
+                            }}
+                            disabled={deleteCategoryConfirmName.trim() !== activeCategoryData?.name}
+                            className={`flex-1 py-3 rounded-full text-sm font-bold transition-all ${
+                              deleteCategoryConfirmName.trim() === activeCategoryData?.name
+                                ? 'bg-red-500 text-white shadow-lg hover:bg-red-600 active:scale-95'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            確認永久刪除
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeletingCategoryId(null);
+                              setDeleteCategoryConfirmName('');
+                            }}
+                            className="px-6 py-3 bg-white text-gray-500 rounded-full text-sm font-bold border border-gray-200 hover:bg-gray-50 transition-colors"
+                          >
+                            取消
+                          </button>
+                        </div>
                       </div>
                     )}
 
