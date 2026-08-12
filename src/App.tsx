@@ -2720,7 +2720,45 @@ export default function App() {
                           此分類目前尚無考題
                         </div>
                       ) : (
-                        activeExams.map((exam, i) => {
+                        (() => {
+                          const proctorTypeList = ['fill', 'essay', 'oral', 'practical'];
+                          const timedExams = activeExams.filter((e) => !proctorTypeList.includes(e.type));
+                          const proctorExams = activeExams.filter((e) => proctorTypeList.includes(e.type));
+                          const sortedExams = [...timedExams, ...proctorExams];
+                          let shownTimedHeader = false;
+                          let shownProctorHeader = false;
+
+                          return sortedExams.map((exam, idx) => {
+                            const isProctor = proctorTypeList.includes(exam.type);
+                            const globalIdx = activeExams.indexOf(exam);
+                            const headers = [];
+
+                            if (!isProctor && !shownTimedHeader && timedExams.length > 0) {
+                              shownTimedHeader = true;
+                              headers.push(
+                                <div key="timed-header" className="flex items-center gap-2 mb-3 mt-2">
+                                  <div className="flex items-center gap-1.5 bg-[#EBF2FF] px-3 py-1.5 rounded-full">
+                                    <span className="text-[11px] font-black text-[#3B82F6]">⏱ 計時題</span>
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 font-bold">{timedExams.length} 題・自動批改</span>
+                                  <div className="flex-1 border-t border-dashed border-blue-200"></div>
+                                </div>
+                              );
+                            }
+                            if (isProctor && !shownProctorHeader && proctorExams.length > 0) {
+                              shownProctorHeader = true;
+                              headers.push(
+                                <div key="proctor-header" className="flex items-center gap-2 mb-3 mt-6">
+                                  <div className="flex items-center gap-1.5 bg-[#FCEEEA] px-3 py-1.5 rounded-full">
+                                    <span className="text-[11px] font-black text-[#D85E38]">👨‍🏫 需考官</span>
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 font-bold">{proctorExams.length} 題・不計時</span>
+                                  <div className="flex-1 border-t border-dashed border-orange-200"></div>
+                                </div>
+                              );
+                            }
+
+                            const i = globalIdx;
                           const empRecord =
                             currentUserData?.examRecords?.[exam.id];
                           const isPassed =
@@ -3172,7 +3210,7 @@ export default function App() {
                             );
                           }
 
-                          return (
+                          const card = (
                             <div
                               key={exam.id}
                               draggable={canEdit}
@@ -3727,7 +3765,15 @@ export default function App() {
                               </div>
                             </div>
                           );
-                        })
+
+                            return (
+                              <React.Fragment key={exam.id}>
+                                {headers}
+                                {card}
+                              </React.Fragment>
+                            );
+                          });
+                        })()
                       )}
 
                       {!canEdit && activeExams.length > 0 && (() => {
