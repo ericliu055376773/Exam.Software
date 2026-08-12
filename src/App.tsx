@@ -743,6 +743,9 @@ export default function App() {
   // 考試作答前選擇考官與開始狀態
   const [selectedProctor, setSelectedProctor] = useState('');
   const [examStarted, setExamStarted] = useState(false);
+  const [examStartTime, setExamStartTime] = useState(null);
+  const [examTimeRemaining, setExamTimeRemaining] = useState(null);
+  const [examTimeUp, setExamTimeUp] = useState(false);
 
   // 人員名單狀態
   const [searchQuery, setSearchQuery] = useState('');
@@ -795,6 +798,7 @@ export default function App() {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState('');
   const [editCategoryPassingScore, setEditCategoryPassingScore] = useState(60);
+  const [editCategoryTimeLimit, setEditCategoryTimeLimit] = useState(0);
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
 
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
@@ -943,6 +947,28 @@ export default function App() {
   const currentUserData = employees.find((e) => e.name === currentUserName);
   const isGrader =
     canEdit || (dailyConfig.graderRoles || []).includes(currentUserRole);
+
+  // === 考試計時器 ===
+  useEffect(() => {
+    if (!examStarted || !examStartTime) return;
+    const activeCat = categories.find((c) => c.id === activeCategoryId);
+    const timeLimit = activeCat?.timeLimit;
+    if (!timeLimit || timeLimit <= 0) {
+      setExamTimeRemaining(null);
+      return;
+    }
+    const timeLimitMs = timeLimit * 60 * 1000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - examStartTime;
+      const remaining = Math.max(0, timeLimitMs - elapsed);
+      setExamTimeRemaining(remaining);
+      if (remaining <= 0) {
+        setExamTimeUp(true);
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [examStarted, examStartTime, activeCategoryId, categories]);
 
   const handleRecordsTabClick = () => {
     setActiveTab('records');
@@ -2200,9 +2226,27 @@ export default function App() {
                     <h3 className="font-black text-xl text-[#1A1A1A] mb-2">
                       準備開始測驗
                     </h3>
-                    <p className="text-xs text-gray-500 font-bold mb-8">
+                    <p className="text-xs text-gray-500 font-bold mb-4">
                       請先選擇本場次的主考官，選定後即可進入題庫作答。
                     </p>
+                    {(() => {
+                      const activeCat = categories.find((c) => c.id === activeCategoryId);
+                      const tl = activeCat?.timeLimit;
+                      const proctorTypes = ['fill', 'essay', 'oral'];
+                      const timedCount = activeExams.filter((e) => !proctorTypes.includes(e.type)).length;
+                      const proctorCount = activeExams.filter((e) => proctorTypes.includes(e.type)).length;
+                      return tl && tl > 0 ? (
+                        <div className="w-full bg-[#EBF2FF] p-4 rounded-xl mb-6 text-left">
+                          <p className="text-sm font-black text-[#3B82F6] mb-1">⏱ 限時 {tl} 分鐘</p>
+                          <p className="text-[11px] text-[#3B82F6]/70 font-bold">
+                            計時題目 {timedCount} 題（是非 / 選擇）
+                            {proctorCount > 0 && `，不計時 ${proctorCount} 題（需考官）`}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mb-4" />
+                      );
+                    })()}
 
                     <div className="w-full text-left mb-8">
                       <label className="text-[11px] font-bold text-gray-400 block mb-2 ml-1">
@@ -2240,6 +2284,9 @@ export default function App() {
                           return;
                         }
                         setExamStarted(true);
+                        setExamStartTime(Date.now());
+                        setExamTimeUp(false);
+                        setExamTimeRemaining(null);
                       }}
                       className="w-full bg-[#D85E38] text-white py-4 rounded-full font-bold shadow-lg hover:bg-[#C25330] transition-transform active:scale-95 tracking-widest"
                     >
@@ -2261,15 +2308,33 @@ export default function App() {
                             </span>
                           </span>
                         </div>
-                        <button
-                          onClick={() => {
-                            setExamStarted(false);
-                            setSelectedProctor('');
-                          }}
-                          className="text-[10px] text-gray-500 font-bold bg-[#F0F2F5] px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors"
-                        >
-                          結束 / 更換
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {examTimeRemaining !== null && (
+                            <span className={`text-xs font-black px-3 py-1.5 rounded-full ${
+                              examTimeUp
+                                ? 'bg-red-100 text-red-600 animate-pulse'
+                                : examTimeRemaining < 60000
+                                ? 'bg-red-100 text-red-600'
+                                : examTimeRemaining < 180000
+                                ? 'bg-orange-100 text-orange-600'
+                                : 'bg-[#EBF2FF] text-[#3B82F6]'
+                            }`}>
+                              {examTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(examTimeRemaining / 60000)}:${String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => {
+                              setExamStarted(false);
+                              setSelectedProctor('');
+                              setExamStartTime(null);
+                              setExamTimeRemaining(null);
+                              setExamTimeUp(false);
+                            }}
+                            className="text-[10px] text-gray-500 font-bold bg-[#F0F2F5] px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                          >
+                            結束 / 更換
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -2422,6 +2487,18 @@ export default function App() {
                                 />
                                 <span className="text-[10px] font-bold text-[#D85E38]">分</span>
                               </div>
+                              <div className="flex items-center gap-1 bg-[#EBF2FF] px-3 rounded-lg">
+                                <span className="text-[10px] font-bold text-[#3B82F6] whitespace-nowrap">限時</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="999"
+                                  value={editCategoryTimeLimit}
+                                  onChange={(e) => setEditCategoryTimeLimit(Number(e.target.value))}
+                                  className="w-12 p-1 bg-transparent outline-none font-black text-[#3B82F6] text-sm text-center"
+                                />
+                                <span className="text-[10px] font-bold text-[#3B82F6]">分鐘</span>
+                              </div>
                             </div>
                             <button
                               onClick={async () => {
@@ -2433,7 +2510,7 @@ export default function App() {
                                         'examCategories',
                                         activeCategoryData.id
                                       ),
-                                      { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60 }
+                                      { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60, timeLimit: Number(editCategoryTimeLimit) || 0 }
                                     );
                                     setEditingCategoryId(null);
                                     showToast('分類名稱及及格分數已更新');
@@ -2464,6 +2541,11 @@ export default function App() {
                               <span className="text-[10px] bg-[#FCEEEA] text-[#D85E38] px-2.5 py-1 rounded-full font-bold">
                                 及格 {activeCategoryData.passingScore ?? 60} 分
                               </span>
+                              {(activeCategoryData.timeLimit ?? 0) > 0 && (
+                                <span className="text-[10px] bg-[#EBF2FF] text-[#3B82F6] px-2.5 py-1 rounded-full font-bold">
+                                  限時 {activeCategoryData.timeLimit} 分鐘
+                                </span>
+                              )}
                             </h3>
                             <div className="flex gap-1">
                               <button
@@ -2471,6 +2553,7 @@ export default function App() {
                                   setEditingCategoryId(activeCategoryData.id);
                                   setEditCategoryName(activeCategoryData.name);
                                   setEditCategoryPassingScore(activeCategoryData.passingScore ?? 60);
+                                  setEditCategoryTimeLimit(activeCategoryData.timeLimit ?? 0);
                                 }}
                                 className="p-2 text-gray-400 hover:text-[#5C6AC4] bg-gray-50 rounded-full transition-colors"
                               >
@@ -3229,12 +3312,18 @@ export default function App() {
                                       ) &&
                                       currentAnswers[exam.id] !== undefined &&
                                       currentAnswers[exam.id].trim() !== '' && (
-                                        <button
-                                          onClick={() => submitAnswer(exam)}
-                                          className="w-full mt-4 bg-[#5C6AC4] text-white py-3.5 rounded-xl font-bold flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-colors"
-                                        >
-                                          <Send c="w-4 h-4 mr-2" /> 送出作答
-                                        </button>
+                                        examTimeUp && ['tf', 'mc'].includes(qType) ? (
+                                          <div className="w-full mt-4 bg-red-100 text-red-600 py-3.5 rounded-xl font-bold flex items-center justify-center">
+                                            ⏰ 時間已到，無法作答此題
+                                          </div>
+                                        ) : (
+                                          <button
+                                            onClick={() => submitAnswer(exam)}
+                                            className="w-full mt-4 bg-[#5C6AC4] text-white py-3.5 rounded-xl font-bold flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-colors"
+                                          >
+                                            <Send c="w-4 h-4 mr-2" /> 送出作答
+                                          </button>
+                                        )
                                       )}
                                     {(qType === 'oral' ||
                                       qType === 'practical') && (
