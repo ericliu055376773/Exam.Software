@@ -827,6 +827,7 @@ export default function App() {
   const [deletingStoreId, setDeletingStoreId] = useState(null);
 
   const [draggedCatId, setDraggedCatId] = useState(null);
+  const categoryTabsRef = useRef(null);
   const [draggedStoreId, setDraggedStoreId] = useState(null);
   const [draggedExamId, setDraggedExamId] = useState(null);
 
@@ -2258,55 +2259,81 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="flex overflow-x-auto hide-scrollbar mt-4 pt-2 mb-4">
-                      {enrichedCategories.map((cat, idx) => (
-                        <button
-                          key={cat.id}
-                          draggable={canEdit}
-                          onDragStart={() => {
-                            if (canEdit) setDraggedCatId(cat.id);
-                          }}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            if (canEdit) handleCategoryDrop(cat.id);
-                          }}
-                          onClick={() => {
-                            if (cat.isUnlocked) setActiveCategoryId(cat.id);
-                            else showToast('🔒 請先通過前一階段的所有測驗！');
-                          }}
-                          className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
-                            activeCategoryId === cat.id
-                              ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                              : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                          } ${
-                            !cat.isUnlocked
-                              ? 'opacity-60 bg-gray-50 text-gray-300 cursor-not-allowed'
-                              : ''
-                          } ${
-                            draggedCatId === cat.id
-                              ? 'opacity-40 border-dashed border-[#5C6AC4]'
-                              : ''
-                          }`}
-                        >
-                          {String(cat.name)}{' '}
-                          {!cat.isUnlocked && <Lock c="w-3 h-3" />}
-                        </button>
-                      ))}
-                      {canEdit && (
-                        <button
-                          onClick={() => setIsAddingCategory(true)}
-                          className="px-4 py-3.5 text-gray-400 hover:text-[#5C6AC4] border-b border-gray-200 flex-1 text-left flex items-center min-w-[100px]"
-                        >
-                          <PlusCircle c="w-4 h-4 mr-1" />{' '}
-                          <span className="text-[12px] font-bold">
-                            新增分類
-                          </span>
-                        </button>
-                      )}
-                      {!canEdit && (
-                        <div className="flex-1 border-b border-gray-200"></div>
-                      )}
+                    <div className="relative mt-4 pt-2 mb-4">
+                      <button
+                        onClick={() => {
+                          if (categoryTabsRef.current) {
+                            categoryTabsRef.current.scrollBy({ left: -150, behavior: 'smooth' });
+                          }
+                        }}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
+                        style={{ marginLeft: '-4px' }}
+                      >
+                        <ChevronLeft c="w-4 h-4 text-gray-600" />
+                      </button>
+
+                      <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
+                        {enrichedCategories.map((cat, idx) => (
+                          <button
+                            key={cat.id}
+                            draggable={canEdit}
+                            onDragStart={() => {
+                              if (canEdit) setDraggedCatId(cat.id);
+                            }}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (canEdit) handleCategoryDrop(cat.id);
+                            }}
+                            onClick={() => {
+                              if (cat.isUnlocked) setActiveCategoryId(cat.id);
+                              else showToast('🔒 請先通過前一階段的所有測驗！');
+                            }}
+                            className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
+                              activeCategoryId === cat.id
+                                ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
+                                : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
+                            } ${
+                              !cat.isUnlocked
+                                ? 'opacity-60 bg-gray-50 text-gray-300 cursor-not-allowed'
+                                : ''
+                            } ${
+                              draggedCatId === cat.id
+                                ? 'opacity-40 border-dashed border-[#5C6AC4]'
+                                : ''
+                            }`}
+                          >
+                            {String(cat.name)}{' '}
+                            {!cat.isUnlocked && <Lock c="w-3 h-3" />}
+                          </button>
+                        ))}
+                        {canEdit && (
+                          <button
+                            onClick={() => setIsAddingCategory(true)}
+                            className="px-4 py-3.5 text-gray-400 hover:text-[#5C6AC4] border-b border-gray-200 flex-1 text-left flex items-center min-w-[100px]"
+                          >
+                            <PlusCircle c="w-4 h-4 mr-1" />{' '}
+                            <span className="text-[12px] font-bold">
+                              新增分類
+                            </span>
+                          </button>
+                        )}
+                        {!canEdit && (
+                          <div className="flex-1 border-b border-gray-200"></div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (categoryTabsRef.current) {
+                            categoryTabsRef.current.scrollBy({ left: 150, behavior: 'smooth' });
+                          }
+                        }}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
+                        style={{ marginRight: '-4px' }}
+                      >
+                        <ChevronRight c="w-4 h-4 text-gray-600" />
+                      </button>
                     </div>
 
                     {canEdit && isAddingCategory && (
