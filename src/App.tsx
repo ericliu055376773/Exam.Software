@@ -2798,84 +2798,6 @@ export default function App() {
 
                           return (
                             <>
-                              {canEdit && editingExamId && (() => {
-                                const editExam = activeExams.find(e => e.id === editingExamId);
-                                if (!editExam) return null;
-                                const proctorTypeList2 = ['essay', 'oral', 'practical', 'timed_task'];
-                                const isEditingProctor = proctorTypeList2.includes(editExam.type);
-                                if (!isEditingProctor) return null;
-                                // Proctor exam edit form - rendered above accordions
-                                return (
-                                  <div className="bg-white p-6 rounded-[28px] soft-shadow border-2 border-[#1A1A1A]/10 animate-in fade-in mb-4">
-                                    <h4 className="font-black text-lg mb-4 flex items-center">
-                                      <Edit c="w-5 h-5 mr-2 text-[#D85E38]" /> 編輯考題
-                                    </h4>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">題型選擇</label>
-                                        <select value={editExamData.type} onChange={(e) => setEditExamData({ ...editExamData, type: e.target.value })} className="w-full p-3 bg-[#F0F2F5] rounded-xl text-sm font-bold outline-none">
-                                          <option value="tf">是非題 (自動批改)</option>
-                                          <option value="mc">選擇題 (自動批改)</option>
-                                          <option value="multiSelect">複選題 (自動批改)</option>
-                                          <option value="fill">填空題 (自動批改)</option>
-                                          <option value="ordering">順序題 (自動批改)</option>
-                                          <option value="essay">問答題 (考官審核)</option>
-                                          <option value="oral">口述題 (需考官)</option>
-                                          <option value="practical">實作題 (需考官)</option>
-                                          <option value="timed_task">計時題 (需考官)</option>
-                                          <option value="basic">一般文字任務</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">題目</label>
-                                        <textarea value={editExamData.title} onChange={(e) => setEditExamData({ ...editExamData, title: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[60px] resize-none" placeholder="輸入題目..." />
-                                      </div>
-                                      <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">副標題 / 分類說明</label>
-                                        <input type="text" value={editExamData.subtitle} onChange={(e) => setEditExamData({ ...editExamData, subtitle: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none" placeholder="輸入分類說明..." />
-                                      </div>
-                                      <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">輔助說明或情境提示 (選填)</label>
-                                        <textarea value={editExamData.description} onChange={(e) => setEditExamData({ ...editExamData, description: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[60px] resize-none" placeholder="輔助說明..." />
-                                      </div>
-                                      {(editExamData.type === 'fill' || editExamData.type === 'essay' || editExamData.type === 'oral') && (
-                                        <div>
-                                          <label className="text-xs font-bold text-gray-500 mb-2 block">標準答案（考官輸入密碼後顯示）</label>
-                                          <textarea value={editExamData.correctAnswer} onChange={(e) => setEditExamData({ ...editExamData, correctAnswer: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[100px] resize-none focus:border-[#D85E38]" placeholder="輸入標準答案或評分要點..." />
-                                        </div>
-                                      )}
-                                      {editExamData.type === 'timed_task' && (
-                                        <div>
-                                          <label className="text-xs font-bold text-gray-500 mb-2 block">限時設定</label>
-                                          <div className="flex gap-3 items-center">
-                                            <div className="flex items-center gap-1 bg-[#FEF9C3] px-3 py-2 rounded-lg">
-                                              <input type="number" min="0" max="59" value={(() => { try { const t = JSON.parse(editExamData.correctAnswer || '{}'); return t.minutes || 0; } catch { return 0; } })()} onChange={(e) => { let t = {}; try { t = JSON.parse(editExamData.correctAnswer || '{}'); } catch {} t.minutes = Number(e.target.value); setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(t) }); }} className="w-12 p-1 bg-transparent outline-none font-black text-[#CA8A04] text-center" />
-                                              <span className="text-xs font-bold text-[#CA8A04]">分</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 bg-[#FEF9C3] px-3 py-2 rounded-lg">
-                                              <input type="number" min="0" max="59" value={(() => { try { const t = JSON.parse(editExamData.correctAnswer || '{}'); return t.seconds || 0; } catch { return 0; } })()} onChange={(e) => { let t = {}; try { t = JSON.parse(editExamData.correctAnswer || '{}'); } catch {} t.seconds = Number(e.target.value); setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(t) }); }} className="w-12 p-1 bg-transparent outline-none font-black text-[#CA8A04] text-center" />
-                                              <span className="text-xs font-bold text-[#CA8A04]">秒</span>
-                                            </div>
-                                          </div>
-                                          <div className="mt-3">
-                                            <label className="text-xs font-bold text-gray-500 mb-1 block">任務說明（考官輸入密碼後顯示）</label>
-                                            <textarea value={(() => { try { return JSON.parse(editExamData.correctAnswer || '{}').notes || ''; } catch { return ''; } })()} onChange={(e) => { let t = {}; try { t = JSON.parse(editExamData.correctAnswer || '{}'); } catch {} t.notes = e.target.value; setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(t) }); }} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[60px] resize-none" placeholder="計時任務的評分標準..." />
-                                          </div>
-                                        </div>
-                                      )}
-                                      <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">此題配分（分）</label>
-                                        <input type="number" value={editExamData.pointValue} onChange={(e) => setEditExamData({ ...editExamData, pointValue: Number(e.target.value) })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none" />
-                                      </div>
-                                      <div className="flex gap-3 mt-2">
-                                        <button onClick={async () => { try { await updateDoc(doc(db, 'exams', editingExamId), { ...editExamData }); setEditingExamId(null); showToast('考題已更新'); } catch (err) { showToast('更新失敗：' + err.message); } }} className="flex-1 bg-[#1A1A1A] text-white py-3 rounded-xl font-bold text-sm">儲存</button>
-                                        <button onClick={() => setEditingExamId(null)} className="flex-1 bg-[#F0F2F5] text-gray-500 py-3 rounded-xl font-bold text-sm">取消</button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-
                               {timedExams.length > 0 && (
                                 <div className="rounded-[24px] overflow-hidden border border-blue-100 soft-shadow">
                                   <button
@@ -3525,7 +3447,7 @@ export default function App() {
 
                               <div className="bg-white rounded-[16px] p-5 shadow-sm border border-gray-50">
                                 <h3 className="font-black text-[#1A1A1A] text-lg mb-4 pr-16 leading-relaxed">
-                                  {i + 1}. {String(exam.title)}
+                                  {String(exam.title)}
                                 </h3>
                                 {exam.description && (
                                   <p className="text-sm text-gray-500 mb-4">
@@ -4107,10 +4029,70 @@ export default function App() {
 
                                         if (canEdit && editingExamId === exam.id) {
                                           return (
-                                            <div key={exam.id} className="bg-white p-6 rounded-[28px] soft-shadow border-2 border-[#1A1A1A]/10 animate-in fade-in">
-                                              <div className="text-center text-sm text-gray-400 font-bold py-4">
-                                                ✏️ 正在上方編輯此考題中...
-                                                <button onClick={() => setEditingExamId(null)} className="block mx-auto mt-2 text-xs text-[#5C6AC4] underline">關閉編輯</button>
+                                            <div key={exam.id} className="bg-white p-6 rounded-[28px] soft-shadow border-2 border-[#D85E38]/20 animate-in fade-in">
+                                              <h4 className="font-black text-base mb-4 flex items-center">
+                                                <Edit c="w-5 h-5 mr-2 text-[#D85E38]" /> 編輯考題
+                                              </h4>
+                                              <div className="space-y-3">
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">題型</label>
+                                                  <select value={editExamData.type} onChange={(e) => setEditExamData({ ...editExamData, type: e.target.value })} className="w-full p-3 bg-[#F0F2F5] rounded-xl text-sm font-bold outline-none">
+                                                    <option value="tf">是非題 (自動批改)</option>
+                                                    <option value="mc">選擇題 (自動批改)</option>
+                                                    <option value="multiSelect">複選題 (自動批改)</option>
+                                                    <option value="fill">填空題 (自動批改)</option>
+                                                    <option value="ordering">順序題 (自動批改)</option>
+                                                    <option value="essay">問答題 (考官審核)</option>
+                                                    <option value="oral">口述題 (需考官)</option>
+                                                    <option value="practical">實作題 (需考官)</option>
+                                                    <option value="timed_task">計時題 (需考官)</option>
+                                                    <option value="basic">一般文字任務</option>
+                                                  </select>
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">題目名稱</label>
+                                                  <textarea value={editExamData.title} onChange={(e) => setEditExamData({ ...editExamData, title: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[50px] resize-none" placeholder="輸入題目..." />
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">輔助說明文字</label>
+                                                  <input type="text" value={editExamData.subtitle} onChange={(e) => setEditExamData({ ...editExamData, subtitle: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none" placeholder="顯示在題型標籤旁邊的說明文字" />
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">情境提示（選填）</label>
+                                                  <textarea value={editExamData.description} onChange={(e) => setEditExamData({ ...editExamData, description: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none min-h-[50px] resize-none" placeholder="輔助說明或情境提示..." />
+                                                </div>
+                                                {['fill', 'essay', 'oral'].includes(editExamData.type) && (
+                                                  <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 mb-1 block">標準答案（考官密碼後顯示）</label>
+                                                    <textarea value={editExamData.correctAnswer} onChange={(e) => setEditExamData({ ...editExamData, correctAnswer: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none min-h-[80px] resize-none" placeholder="標準答案或評分要點..." />
+                                                  </div>
+                                                )}
+                                                {editExamData.type === 'timed_task' && (
+                                                  <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 mb-1 block">限時設定</label>
+                                                    <div className="flex gap-3">
+                                                      <div className="flex items-center gap-1 bg-[#FEF9C3] px-3 py-2 rounded-lg">
+                                                        <input type="number" min="0" max="59" value={(() => { try { return JSON.parse(editExamData.correctAnswer || '{}').minutes || 0; } catch { return 0; } })()} onChange={(e) => { let t = {}; try { t = JSON.parse(editExamData.correctAnswer || '{}'); } catch {} t.minutes = Number(e.target.value); setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(t) }); }} className="w-10 p-0.5 bg-transparent outline-none font-black text-[#CA8A04] text-sm text-center" />
+                                                        <span className="text-xs font-bold text-[#CA8A04]">分</span>
+                                                      </div>
+                                                      <div className="flex items-center gap-1 bg-[#FEF9C3] px-3 py-2 rounded-lg">
+                                                        <input type="number" min="0" max="59" value={(() => { try { return JSON.parse(editExamData.correctAnswer || '{}').seconds || 0; } catch { return 0; } })()} onChange={(e) => { let t = {}; try { t = JSON.parse(editExamData.correctAnswer || '{}'); } catch {} t.seconds = Number(e.target.value); setEditExamData({ ...editExamData, correctAnswer: JSON.stringify(t) }); }} className="w-10 p-0.5 bg-transparent outline-none font-black text-[#CA8A04] text-sm text-center" />
+                                                        <span className="text-xs font-bold text-[#CA8A04]">秒</span>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {editExamData.type === 'practical' && (
+                                                  <p className="text-xs text-gray-400 font-bold bg-gray-50 p-3 rounded-lg">此題型由現場考官人工確認與批改</p>
+                                                )}
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">配分</label>
+                                                  <input type="number" value={editExamData.pointValue} onChange={(e) => setEditExamData({ ...editExamData, pointValue: Number(e.target.value) })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none" />
+                                                </div>
+                                                <div className="flex gap-2 pt-1">
+                                                  <button onClick={async () => { try { await updateDoc(doc(db, 'exams', editingExamId), { ...editExamData }); setEditingExamId(null); showToast('考題已更新'); } catch (err) { showToast('更新失敗：' + err.message); } }} className="flex-1 bg-[#1A1A1A] text-white py-3 rounded-xl font-bold text-sm">儲存</button>
+                                                  <button onClick={() => setEditingExamId(null)} className="flex-1 bg-[#F0F2F5] text-gray-500 py-3 rounded-xl font-bold text-sm">取消</button>
+                                                </div>
                                               </div>
                                             </div>
                                           );
@@ -4181,7 +4163,7 @@ export default function App() {
                                               {isPendingProctor && <span className="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold">⏳ 待考官</span>}
                                             </div>
                                             <div className="bg-white p-5 rounded-[20px] shadow-sm border border-gray-100">
-                                              <h3 className="text-lg font-black text-[#1A1A1A] mb-3">{i + 1}. {exam.title}</h3>
+                                              <h3 className="text-lg font-black text-[#1A1A1A] mb-3">{exam.title}</h3>
                                               {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl">{exam.description}</p>}
 
                                               {!canEdit && isPendingProctor && (
