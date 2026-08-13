@@ -3548,7 +3548,7 @@ export default function App() {
                                       </div>
                                     )}
                                     {qType === 'mc' && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div className="flex flex-col gap-3">
                                         {['A', 'B', 'C', 'D'].map(
                                           (letter, idx) => (
                                             <button
@@ -3585,7 +3585,7 @@ export default function App() {
                                       </div>
                                     )}
                                     {qType === 'multiSelect' && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div className="flex flex-col gap-3">
                                         {['A', 'B', 'C', 'D'].map((letter, idx) => {
                                           if (!exam.options?.[idx]) return null;
                                           let selected = [];
