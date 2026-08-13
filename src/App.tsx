@@ -2294,26 +2294,34 @@ export default function App() {
                       </button>
 
                       <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
-                        {enrichedCategories.map((cat, idx) => (
-                          <button
-                            key={cat.id}
-                            onClick={() => {
-                              setActiveCategoryId(cat.id);
-                              setExamStarted(false);
-                              setSelectedProctor('');
-                              setExamStartTime(null);
-                              setExamTimeRemaining(null);
-                              setExamTimeUp(false);
-                            }}
-                            className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
-                              activeCategoryId === cat.id
-                                ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                                : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                            }`}
-                          >
-                            {String(cat.name)}
-                          </button>
-                        ))}
+                        {enrichedCategories.map((cat, idx) => {
+                          const catPassed = cat.progress?.isPassed;
+                          return (
+                            <button
+                              key={cat.id}
+                              onClick={() => {
+                                setActiveCategoryId(cat.id);
+                                setExamStarted(false);
+                                setSelectedProctor('');
+                                setExamStartTime(null);
+                                setExamTimeRemaining(null);
+                                setExamTimeUp(false);
+                              }}
+                              className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
+                                activeCategoryId === cat.id
+                                  ? catPassed
+                                    ? 'bg-green-50 text-green-600 border-green-200 z-10 pb-4'
+                                    : 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
+                                  : catPassed
+                                  ? 'bg-green-50 text-green-500 border-transparent hover:bg-green-100'
+                                  : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
+                              }`}
+                            >
+                              {catPassed && <span className="text-sm">✅</span>}
+                              {String(cat.name)}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <button
@@ -3619,7 +3627,7 @@ export default function App() {
                                             </button>
                                           );
                                         })}
-                                        <p className="text-[10px] text-gray-400 col-span-full">可選擇多個答案</p>
+                                        <div className="w-full bg-[#F0E6FF] text-[#7C3AED] px-4 py-2.5 rounded-xl text-xs font-bold text-center">⚡ 此題可選擇多個答案</div>
                                       </div>
                                     )}
                                     {qType === 'ordering' && (
@@ -4311,62 +4319,7 @@ export default function App() {
                         })()
                       )}
 
-                      {!canEdit && activeExams.length > 0 && (() => {
-                        const prog = activeCategoryData?.progress;
-                        const allAnswered = prog?.allAnswered;
-                        const score = prog?.score ?? 0;
-                        const passingScore = prog?.passingScore ?? 60;
-                        const isPassed = prog?.isPassed;
-
-                        return (
-                          <div className="mt-8 mb-4 bg-white p-8 rounded-[32px] soft-shadow border border-gray-100 text-center relative overflow-hidden animate-in slide-in-from-bottom-4">
-                            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-[60px] opacity-10 pointer-events-none ${isPassed ? 'bg-[#2F7E5B]' : 'bg-[#D85E38]'}`}></div>
-                            <h3 className="font-black text-[#1A1A1A] text-lg mb-2 relative z-10">
-                              本分類測驗結果
-                            </h3>
-
-                            {allAnswered ? (
-                              <>
-                                <div className={`text-5xl font-black mb-1 tracking-tighter relative z-10 ${isPassed ? 'text-[#2F7E5B]' : 'text-[#D85E38]'}`}>
-                                  {score}
-                                  <span className="text-[16px] text-gray-400 font-bold ml-1">/ 100 分</span>
-                                </div>
-                                <p className="text-[11px] text-gray-400 font-bold mb-5 relative z-10">
-                                  及格標準：{passingScore} 分
-                                </p>
-                                <div className="relative z-10">
-                                  {isPassed ? (
-                                    <div className="flex flex-col items-center gap-3">
-                                      <div className="inline-flex items-center bg-[#F1F8F5] text-[#2F7E5B] px-5 py-3 rounded-full font-bold text-[13px] shadow-sm">
-                                        <CheckCircle2 c="w-4 h-4 mr-2" /> 恭喜通過！已解鎖下一分類
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-col items-center gap-3">
-                                      <div className="inline-flex items-center bg-[#FCEEEA] text-[#D85E38] px-5 py-3 rounded-full font-bold text-[13px] shadow-sm">
-                                        <XCircle c="w-4 h-4 mr-2" /> 未達及格分數，請向考官申請重考
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="text-5xl font-black text-[#D85E38] mb-1 tracking-tighter relative z-10">
-                                  {score}
-                                  <span className="text-[16px] text-gray-400 font-bold ml-1">/ 100 分</span>
-                                </div>
-                                <p className="text-[11px] text-gray-400 font-bold mb-5 relative z-10">
-                                  尚有題目未作答，請完成所有題目後結束考試
-                                </p>
-                                <div className="inline-flex items-center bg-[#F0F2F5] text-gray-400 px-5 py-3 rounded-full font-bold text-[13px] relative z-10">
-                                  <Lock c="w-4 h-4 mr-2" /> 完成所有題目後即可結束考試
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      {/* 分數區已移除，通過狀態顯示在分類標籤上 */}
                     </div>
                   </>
                 )}
