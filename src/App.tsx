@@ -802,6 +802,7 @@ export default function App() {
   const [editCategoryName, setEditCategoryName] = useState('');
   const [editCategoryPassingScore, setEditCategoryPassingScore] = useState(60);
   const [editCategoryTimeLimit, setEditCategoryTimeLimit] = useState(0);
+  const [editCategoryProctorTimeLimit, setEditCategoryProctorTimeLimit] = useState(0);
   const [editCategoryGroup, setEditCategoryGroup] = useState('newcomer');
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
   const [deleteCategoryConfirmName, setDeleteCategoryConfirmName] = useState('');
@@ -1401,7 +1402,7 @@ export default function App() {
       const rec = currentUserData?.examRecords?.[exam.id];
       return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor')));
     });
-    const isPassed = total === 0 || (allAnswered && score >= passingScore);
+    const isPassed = total === 0 || (allAnswered && passedCount === total);
     const isUnlocked = true;
     isPreviousPassed = isPassed;
     return {
@@ -2432,7 +2433,7 @@ export default function App() {
                               </div>
                               <h4 className="font-black text-xl text-green-600 mb-1">考試通過！</h4>
                               <p className="text-sm text-gray-500 font-bold">分數：<span className="text-green-600 font-black text-lg">{catProg.score}</span> / {catProg.totalPoints} 分</p>
-                              <p className="text-[10px] text-gray-400 mt-1">及格分數：{catProg.passingScore} 分</p>
+                              <p className="text-[10px] text-gray-400 mt-1">全部答對即通過</p>
                             </div>
                           );
                         }
@@ -2683,27 +2684,28 @@ export default function App() {
                               placeholder="分類名稱"
                             />
                             <div className="flex flex-wrap gap-2">
-                              <div className="flex items-center gap-1 bg-[#FCEEEA] px-3 py-1.5 rounded-lg">
-                                <span className="text-[10px] font-bold text-[#D85E38] whitespace-nowrap">及格</span>
-                                <input type="number" min="1" max="100" value={editCategoryPassingScore} onChange={(e) => setEditCategoryPassingScore(Number(e.target.value))} className="w-10 p-0.5 bg-transparent outline-none font-black text-[#D85E38] text-sm text-center" />
-                                <span className="text-[10px] font-bold text-[#D85E38]">分</span>
-                              </div>
                               <div className="flex items-center gap-1 bg-[#EBF2FF] px-3 py-1.5 rounded-lg">
-                                <span className="text-[10px] font-bold text-[#3B82F6] whitespace-nowrap">限時</span>
+                                <span className="text-[10px] font-bold text-[#3B82F6] whitespace-nowrap">💻 限時</span>
                                 <input type="number" min="0" max="999" value={editCategoryTimeLimit} onChange={(e) => setEditCategoryTimeLimit(Number(e.target.value))} className="w-10 p-0.5 bg-transparent outline-none font-black text-[#3B82F6] text-sm text-center" />
-                                <span className="text-[10px] font-bold text-[#3B82F6]">分鐘</span>
+                                <span className="text-[10px] font-bold text-[#3B82F6]">分</span>
+                              </div>
+                              <div className="flex items-center gap-1 bg-[#FCEEEA] px-3 py-1.5 rounded-lg">
+                                <span className="text-[10px] font-bold text-[#D85E38] whitespace-nowrap">👨‍🏫 限時</span>
+                                <input type="number" min="0" max="999" value={editCategoryProctorTimeLimit} onChange={(e) => setEditCategoryProctorTimeLimit(Number(e.target.value))} className="w-10 p-0.5 bg-transparent outline-none font-black text-[#D85E38] text-sm text-center" />
+                                <span className="text-[10px] font-bold text-[#D85E38]">分</span>
                               </div>
                               <select value={editCategoryGroup} onChange={(e) => setEditCategoryGroup(e.target.value)} className="text-[10px] font-bold px-3 py-1.5 rounded-lg outline-none bg-gray-100 text-gray-600">
                                 <option value="newcomer">🌱 新人考題</option>
                                 <option value="veteran">⭐ 老鳥考題</option>
                               </select>
                             </div>
+                            <p className="text-[9px] text-gray-400">設為 0 表示不限時</p>
                             <div className="flex gap-2">
                               <button
                                 onClick={async () => {
                                   if (editCategoryName.trim()) {
                                     try {
-                                      await updateDoc(doc(db, 'examCategories', activeCategoryData.id), { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60, timeLimit: Number(editCategoryTimeLimit) || 0, examGroup: editCategoryGroup });
+                                      await updateDoc(doc(db, 'examCategories', activeCategoryData.id), { name: editCategoryName.trim(), timeLimit: Number(editCategoryTimeLimit) || 0, proctorTimeLimit: Number(editCategoryProctorTimeLimit) || 0, examGroup: editCategoryGroup });
                                       setEditingCategoryId(null);
                                       showToast('分類設定已更新');
                                     } catch (err) {
@@ -2727,12 +2729,14 @@ export default function App() {
                               <span className="text-[10px] bg-[#F0F2F5] text-gray-500 px-2.5 py-1 rounded-full">
                                 {activeExams.length} 題
                               </span>
-                              <span className="text-[10px] bg-[#FCEEEA] text-[#D85E38] px-2.5 py-1 rounded-full font-bold">
-                                及格 {activeCategoryData.passingScore ?? 60} 分
-                              </span>
                               {(activeCategoryData.timeLimit ?? 0) > 0 && (
                                 <span className="text-[10px] bg-[#EBF2FF] text-[#3B82F6] px-2.5 py-1 rounded-full font-bold">
-                                  限時 {activeCategoryData.timeLimit} 分鐘
+                                  💻 限時 {activeCategoryData.timeLimit} 分鐘
+                                </span>
+                              )}
+                              {(activeCategoryData.proctorTimeLimit ?? 0) > 0 && (
+                                <span className="text-[10px] bg-[#FCEEEA] text-[#D85E38] px-2.5 py-1 rounded-full font-bold">
+                                  👨‍🏫 限時 {activeCategoryData.proctorTimeLimit} 分鐘
                                 </span>
                               )}
                               <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${(activeCategoryData.examGroup || 'newcomer') === 'newcomer' ? 'bg-blue-50 text-blue-500' : 'bg-orange-50 text-orange-500'}`}>
@@ -2746,6 +2750,7 @@ export default function App() {
                                   setEditCategoryName(activeCategoryData.name);
                                   setEditCategoryPassingScore(activeCategoryData.passingScore ?? 60);
                                   setEditCategoryTimeLimit(activeCategoryData.timeLimit ?? 0);
+                                  setEditCategoryProctorTimeLimit(activeCategoryData.proctorTimeLimit ?? 0);
                                   setEditCategoryGroup(activeCategoryData.examGroup || 'newcomer');
                                 }}
                                 className="p-2 text-gray-400 hover:text-[#5C6AC4] bg-gray-50 rounded-full transition-colors"
@@ -3389,6 +3394,23 @@ export default function App() {
                                         />
                                       </div>
                                     )}
+                                  </div>
+
+                                  <div className="bg-[#F8FAFC] rounded-xl p-3 border border-gray-100">
+                                    <label className="text-[10px] font-bold text-gray-400 block mb-1">移動至其他分類</label>
+                                    <select
+                                      value={exam.categoryId || activeCategoryId}
+                                      onChange={async (e) => {
+                                        await updateDoc(doc(db, 'exams', exam.id), { categoryId: e.target.value });
+                                        showToast('考題已移動至其他分類');
+                                        setEditingExamId(null);
+                                      }}
+                                      className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none"
+                                    >
+                                      {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>{cat.name} {cat.id === activeCategoryId ? '（目前）' : ''}</option>
+                                      ))}
+                                    </select>
                                   </div>
 
                                   <div className="flex pt-2 gap-3">
@@ -4075,7 +4097,7 @@ export default function App() {
                                       </div>
                                       <div className="text-left">
                                         <h4 className="font-black text-[#D85E38] text-sm">考官測驗</h4>
-                                        <p className="text-[10px] text-[#D85E38]/60 font-bold">{proctorExams.length} 題・需考官・不計時</p>
+                                        <p className="text-[10px] text-[#D85E38]/60 font-bold">{proctorExams.length} 題・需考官{(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : '・不計時'}</p>
                                       </div>
                                     </div>
                                     <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showProctorSection ? 'rotate-180' : ''}`}>
@@ -4161,6 +4183,22 @@ export default function App() {
                                                 {editExamData.type === 'practical' && (
                                                   <p className="text-xs text-gray-400 font-bold bg-gray-50 p-3 rounded-lg">此題型由現場考官人工確認與批改</p>
                                                 )}
+                                                <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                                                  <label className="text-[10px] font-bold text-gray-400 block mb-1">移動至其他分類</label>
+                                                  <select
+                                                    value={exam.categoryId || activeCategoryId}
+                                                    onChange={async (e) => {
+                                                      await updateDoc(doc(db, 'exams', editingExamId), { categoryId: e.target.value });
+                                                      showToast('考題已移動至其他分類');
+                                                      setEditingExamId(null);
+                                                    }}
+                                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none"
+                                                  >
+                                                    {categories.map((cat) => (
+                                                      <option key={cat.id} value={cat.id}>{cat.name} {cat.id === activeCategoryId ? '（目前）' : ''}</option>
+                                                    ))}
+                                                  </select>
+                                                </div>
                                                 <div className="flex gap-2 pt-1">
                                                   <button onClick={async () => { try { await updateDoc(doc(db, 'exams', editingExamId), { ...editExamData }); setEditingExamId(null); showToast('考題已更新'); } catch (err) { showToast('更新失敗：' + err.message); } }} className="flex-1 bg-[#1A1A1A] text-white py-3 rounded-xl font-bold text-sm">儲存</button>
                                                   <button onClick={() => setEditingExamId(null)} className="flex-1 bg-[#F0F2F5] text-gray-500 py-3 rounded-xl font-bold text-sm">取消</button>
