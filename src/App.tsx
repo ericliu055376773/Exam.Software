@@ -748,6 +748,7 @@ export default function App() {
   const [examTimeUp, setExamTimeUp] = useState(false);
   const [showTimedSection, setShowTimedSection] = useState(true);
   const [showProctorSection, setShowProctorSection] = useState(false);
+  const [examMode, setExamMode] = useState(null); // null | 'newcomer' | 'veteran'
 
   // 人員名單狀態
   const [searchQuery, setSearchQuery] = useState('');
@@ -801,6 +802,7 @@ export default function App() {
   const [editCategoryName, setEditCategoryName] = useState('');
   const [editCategoryPassingScore, setEditCategoryPassingScore] = useState(60);
   const [editCategoryTimeLimit, setEditCategoryTimeLimit] = useState(0);
+  const [editCategoryGroup, setEditCategoryGroup] = useState('newcomer');
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
   const [deleteCategoryConfirmName, setDeleteCategoryConfirmName] = useState('');
 
@@ -1408,6 +1410,10 @@ export default function App() {
       isUnlocked,
     };
   });
+
+  const filteredCategories = examMode
+    ? enrichedCategories.filter((c) => (c.examGroup || 'newcomer') === examMode)
+    : enrichedCategories;
 
   const activeCategoryData =
     enrichedCategories.find((c) => c.id === activeCategoryId) || null;
@@ -2255,10 +2261,73 @@ export default function App() {
             {/* --- 考試列表 --- */}
             {activeTab === 'exams' && (
               <div className="space-y-5 animate-in fade-in duration-300">
+
+                {/* 新人/老鳥 選擇畫面 */}
+                {!canEdit && !examMode ? (
+                  <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in zoom-in-95">
+                    <h2 className="font-black text-[#1A1A1A] text-2xl tracking-tight mb-2">
+                      考試項目<span className="text-[#D85E38]">.</span>
+                    </h2>
+                    {appConfig.marqueeText && (
+                      <div className="overflow-hidden bg-white/60 rounded-lg shadow-sm border border-white/50 py-1.5 px-1 max-w-[300px] mb-8">
+                        <div className="animate-marquee whitespace-nowrap inline-block">
+                          <span className="text-[11px] text-gray-600 font-bold mx-4">📢 {appConfig.marqueeText}</span>
+                          <span className="text-[11px] text-gray-600 font-bold mx-4">📢 {appConfig.marqueeText}</span>
+                        </div>
+                        <style>{`
+                          @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                          .animate-marquee { animation: marquee 12s linear infinite; }
+                        `}</style>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-500 font-bold mb-8">請選擇您的考試類型</p>
+                    <div className="flex flex-col gap-4 w-full max-w-xs">
+                      <button
+                        onClick={() => setExamMode('newcomer')}
+                        className="w-full bg-gradient-to-r from-[#3B82F6] to-[#6366F1] text-white py-6 rounded-[24px] font-black text-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-3"
+                      >
+                        <span className="text-3xl">🌱</span> 新人考題
+                      </button>
+                      <button
+                        onClick={() => setExamMode('veteran')}
+                        className="w-full bg-gradient-to-r from-[#D85E38] to-[#E11D48] text-white py-6 rounded-[24px] font-black text-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-3"
+                      >
+                        <span className="text-3xl">⭐</span> 老鳥考題
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                <div>
+
+                {/* 返回按鈕 - 非管理員 */}
+                {!canEdit && examMode && (
+                  <button
+                    onClick={() => { setExamMode(null); setExamStarted(false); setSelectedProctor(''); }}
+                    className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-gray-600 mb-2 transition-colors"
+                  >
+                    <ChevronLeft c="w-4 h-4" /> 返回選擇
+                  </button>
+                )}
+
+                {/* 管理員模式切換 */}
+                {canEdit && (
+                  <div className="flex gap-2 mb-4">
+                    <button onClick={() => setExamMode('newcomer')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${examMode === 'newcomer' ? 'bg-[#3B82F6] text-white shadow-md' : 'bg-[#EBF2FF] text-[#3B82F6]'}`}>
+                      🌱 新人考題
+                    </button>
+                    <button onClick={() => setExamMode('veteran')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${examMode === 'veteran' ? 'bg-[#D85E38] text-white shadow-md' : 'bg-[#FCEEEA] text-[#D85E38]'}`}>
+                      ⭐ 老鳥考題
+                    </button>
+                    <button onClick={() => setExamMode(null)} className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${!examMode ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}>
+                      全部
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center mb-2 px-1 mt-2">
                   <div>
                     <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight mb-2">
-                      考試項目<span className="text-[#D85E38]">.</span>
+                      {examMode === 'newcomer' ? '🌱 新人考題' : examMode === 'veteran' ? '⭐ 老鳥考題' : '考試項目'}<span className="text-[#D85E38]">.</span>
                     </h2>
                     {!canEdit && appConfig.marqueeText && (
                       <div className="overflow-hidden bg-white/60 rounded-lg shadow-sm border border-white/50 py-1.5 px-1 max-w-full">
@@ -2309,7 +2378,7 @@ export default function App() {
                       </button>
 
                       <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
-                        {enrichedCategories.map((cat, idx) => {
+                        {filteredCategories.map((cat, idx) => {
                           const catPassed = cat.progress?.isPassed;
                           return (
                             <button
@@ -2483,7 +2552,7 @@ export default function App() {
                       </button>
 
                       <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
-                        {enrichedCategories.map((cat, idx) => (
+                        {filteredCategories.map((cat, idx) => (
                           <button
                             key={cat.id}
                             draggable={canEdit}
@@ -2623,13 +2692,17 @@ export default function App() {
                                 <input type="number" min="0" max="999" value={editCategoryTimeLimit} onChange={(e) => setEditCategoryTimeLimit(Number(e.target.value))} className="w-10 p-0.5 bg-transparent outline-none font-black text-[#3B82F6] text-sm text-center" />
                                 <span className="text-[10px] font-bold text-[#3B82F6]">分鐘</span>
                               </div>
+                              <select value={editCategoryGroup} onChange={(e) => setEditCategoryGroup(e.target.value)} className="text-[10px] font-bold px-3 py-1.5 rounded-lg outline-none bg-gray-100 text-gray-600">
+                                <option value="newcomer">🌱 新人考題</option>
+                                <option value="veteran">⭐ 老鳥考題</option>
+                              </select>
                             </div>
                             <div className="flex gap-2">
                               <button
                                 onClick={async () => {
                                   if (editCategoryName.trim()) {
                                     try {
-                                      await updateDoc(doc(db, 'examCategories', activeCategoryData.id), { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60, timeLimit: Number(editCategoryTimeLimit) || 0 });
+                                      await updateDoc(doc(db, 'examCategories', activeCategoryData.id), { name: editCategoryName.trim(), passingScore: Number(editCategoryPassingScore) || 60, timeLimit: Number(editCategoryTimeLimit) || 0, examGroup: editCategoryGroup });
                                       setEditingCategoryId(null);
                                       showToast('分類設定已更新');
                                     } catch (err) {
@@ -2661,6 +2734,9 @@ export default function App() {
                                   限時 {activeCategoryData.timeLimit} 分鐘
                                 </span>
                               )}
+                              <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${(activeCategoryData.examGroup || 'newcomer') === 'newcomer' ? 'bg-blue-50 text-blue-500' : 'bg-orange-50 text-orange-500'}`}>
+                                {(activeCategoryData.examGroup || 'newcomer') === 'newcomer' ? '🌱 新人' : '⭐ 老鳥'}
+                              </span>
                             </h3>
                             <div className="flex gap-1">
                               <button
@@ -2669,6 +2745,7 @@ export default function App() {
                                   setEditCategoryName(activeCategoryData.name);
                                   setEditCategoryPassingScore(activeCategoryData.passingScore ?? 60);
                                   setEditCategoryTimeLimit(activeCategoryData.timeLimit ?? 0);
+                                  setEditCategoryGroup(activeCategoryData.examGroup || 'newcomer');
                                 }}
                                 className="p-2 text-gray-400 hover:text-[#5C6AC4] bg-gray-50 rounded-full transition-colors"
                               >
@@ -4337,6 +4414,8 @@ export default function App() {
                       {/* 分數區已移除，通過狀態顯示在分類標籤上 */}
                     </div>
                   </>
+                )}
+                </div>
                 )}
               </div>
             )}
