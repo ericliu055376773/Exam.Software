@@ -697,7 +697,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   // === App 設定 (標題、Logo) ===
-  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄' });
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答' });
   const [editAppTitle, setEditAppTitle] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showAppConfigModal, setShowAppConfigModal] = useState(false);
@@ -924,7 +924,7 @@ export default function App() {
       doc(db, 'settings', 'appConfig'),
       (snap) => {
         if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', ...snap.data() });
-        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄' });
+        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答' });
       }
     );
 
@@ -2260,10 +2260,25 @@ export default function App() {
                     <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight mb-2">
                       考試項目<span className="text-[#D85E38]">.</span>
                     </h2>
-                    {!canEdit && (
-                      <div className="inline-flex items-center text-[11px] text-gray-500 font-bold bg-white/60 px-3 py-1.5 rounded-lg shadow-sm border border-white/50">
-                        <span className="text-[#D85E38] mr-1.5 text-xs">※</span>{' '}
-                        依照題型指示進行作答
+                    {!canEdit && appConfig.marqueeText && (
+                      <div className="overflow-hidden bg-white/60 rounded-lg shadow-sm border border-white/50 py-1.5 px-1 max-w-full">
+                        <div className="animate-marquee whitespace-nowrap inline-block">
+                          <span className="text-[11px] text-gray-600 font-bold mx-4">
+                            📢 {appConfig.marqueeText}
+                          </span>
+                          <span className="text-[11px] text-gray-600 font-bold mx-4">
+                            📢 {appConfig.marqueeText}
+                          </span>
+                        </div>
+                        <style>{`
+                          @keyframes marquee {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-50%); }
+                          }
+                          .animate-marquee {
+                            animation: marquee 12s linear infinite;
+                          }
+                        `}</style>
                       </div>
                     )}
                   </div>
@@ -7082,6 +7097,27 @@ export default function App() {
                 className="mt-3 w-full py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-md"
               >
                 儲存標題
+              </button>
+            </div>
+
+            {/* 跑馬燈公告設定 */}
+            <div className="mb-5 pt-5 border-t border-gray-100">
+              <label className="text-[11px] font-bold text-gray-500 block mb-2 ml-1">📢 跑馬燈公告文字</label>
+              <textarea
+                value={appConfig.marqueeText || ''}
+                onChange={(e) => setAppConfig(prev => ({ ...prev, marqueeText: e.target.value }))}
+                className="w-full p-4 bg-[#F0F2F5] rounded-[20px] font-bold text-[#1A1A1A] outline-none focus:ring-2 focus:ring-[#D85E38]/50 border-none text-sm min-h-[80px] resize-none"
+                placeholder="輸入要顯示在考試頁面上方的跑馬燈公告..."
+              />
+              <p className="text-[10px] text-gray-400 mt-1 ml-1">此公告會以跑馬燈方式顯示在員工考試頁面上方，留空則不顯示</p>
+              <button
+                onClick={async () => {
+                  await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig }, { merge: true });
+                  showToast('跑馬燈公告已更新！');
+                }}
+                className="mt-3 w-full py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-md"
+              >
+                儲存公告
               </button>
             </div>
 
