@@ -3389,19 +3389,6 @@ export default function App() {
                                       </div>
                                     )}
                                   </div>
-                                  {/* 題目分數設定 */}
-                                  <div className="bg-[#F8FAFC] rounded-xl p-3 border border-gray-100">
-                                    <label className="text-[11px] font-bold text-gray-500 block mb-2">此題配分（分）</label>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      max="100"
-                                      value={editExamData.pointValue ?? 10}
-                                      onChange={(e) => setEditExamData({ ...editExamData, pointValue: Number(e.target.value) || 10 })}
-                                      className="w-full p-3 bg-white border border-gray-200 rounded-lg outline-none font-black text-[#1A1A1A] text-sm focus:border-[#D85E38]"
-                                    />
-                                    <p className="text-[10px] text-gray-400 mt-1">預設 10 分，所有題目總分即為各題配分總和</p>
-                                  </div>
 
                                   <div className="flex pt-2 gap-3">
                                     <button
@@ -3529,28 +3516,16 @@ export default function App() {
                                   {String(typeInfo.label)}
                                 </span>
                                 <span className="text-[11px] font-bold text-gray-400">
-                                  {qType === 'tf'
-                                    ? '上方會友可以打圈或打叉'
-                                    : qType === 'mc'
-                                    ? '有四個答案可以選'
-                                    : qType === 'fill'
-                                    ? '上方有問題，則下方需自行填寫'
-                                    : qType === 'essay'
-                                    ? '需自行填寫，送出後由考官批改'
-                                    : qType === 'oral'
-                                    ? '需現場詢問 (考官專用區)'
-                                    : qType === 'practical'
-                                    ? '需現場模擬 (考官專用區)'
-                                    : ''}
+                                  {exam.subtitle || ''}
                                 </span>
                               </div>
 
                               <div className="bg-white rounded-[16px] p-5 shadow-sm border border-gray-50">
-                                <h3 className="font-black text-[#1A1A1A] text-lg mb-4 pr-16 leading-relaxed">
+                                <h3 className="font-black text-[#1A1A1A] text-base mb-2 leading-relaxed text-left">
                                   {String(exam.title)}
                                 </h3>
                                 {exam.description && (
-                                  <p className="text-sm text-gray-500 mb-4">
+                                  <p className="text-sm text-gray-500 mb-4 text-left bg-gray-50 p-3 rounded-xl">
                                     {String(exam.description)}
                                   </p>
                                 )}
@@ -4185,10 +4160,6 @@ export default function App() {
                                                 {editExamData.type === 'practical' && (
                                                   <p className="text-xs text-gray-400 font-bold bg-gray-50 p-3 rounded-lg">此題型由現場考官人工確認與批改</p>
                                                 )}
-                                                <div>
-                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">配分</label>
-                                                  <input type="number" value={editExamData.pointValue} onChange={(e) => setEditExamData({ ...editExamData, pointValue: Number(e.target.value) })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none" />
-                                                </div>
                                                 <div className="flex gap-2 pt-1">
                                                   <button onClick={async () => { try { await updateDoc(doc(db, 'exams', editingExamId), { ...editExamData }); setEditingExamId(null); showToast('考題已更新'); } catch (err) { showToast('更新失敗：' + err.message); } }} className="flex-1 bg-[#1A1A1A] text-white py-3 rounded-xl font-bold text-sm">儲存</button>
                                                   <button onClick={() => setEditingExamId(null)} className="flex-1 bg-[#F0F2F5] text-gray-500 py-3 rounded-xl font-bold text-sm">取消</button>
