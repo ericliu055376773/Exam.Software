@@ -4076,6 +4076,8 @@ export default function App() {
                                             onClick={async () => {
                                               let allCorrect = true;
                                               const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
+                                              // 先檢查所有答案
+                                              const results = [];
                                               for (const exam of timedExams) {
                                                 const userAnswer = currentAnswers[exam.id];
                                                 let correct = false;
@@ -4084,12 +4086,16 @@ export default function App() {
                                                 else if (exam.type === 'multiSelect') { try { const u = JSON.parse(userAnswer); const c = JSON.parse(exam.correctAnswer); correct = u.sort().join(',') === c.sort().join(','); } catch {} }
                                                 else if (exam.type === 'ordering') { try { const u = JSON.parse(userAnswer); const c = JSON.parse(exam.correctAnswer); correct = u.every((v, i) => v === c[i]); } catch {} }
                                                 if (!correct) allCorrect = false;
+                                                results.push({ exam, correct });
+                                              }
+                                              // 如果有任何一題錯，全部標記為 failed
+                                              const finalStatus = allCorrect ? 'passed' : 'failed';
+                                              for (const { exam } of results) {
                                                 const pv = exam.pointValue ?? 10;
                                                 const pm = newRecords[exam.id]?.mistakes || 0;
-                                                newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: correct ? 'passed' : 'failed', timestamp: Date.now(), title: exam.title, mistakes: correct ? pm : pm + 1, approver: selectedProctor, score: correct ? pv : 0, pointValue: pv };
+                                                newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: finalStatus, timestamp: Date.now(), title: exam.title, mistakes: allCorrect ? pm : pm + 1, approver: selectedProctor, score: allCorrect ? pv : 0, pointValue: pv };
                                               }
                                               await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
-                                              // 記錄考試次數
                                               const ca = currentUserData?.categoryAttempts || {};
                                               const cd = ca[activeCategoryId] || {};
                                               cd.timed = (cd.timed || 0) + 1;
@@ -4098,8 +4104,8 @@ export default function App() {
                                               await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
                                               setCurrentAnswers({});
                                               if (allCorrect) showToast('🎉 全部答對！電腦測驗通過！');
-                                              else showToast('❌ 有題目答錯，需要整份重新測驗！');
-                                            }}
+                                              else showToast('❌ 有題目答錯，整份電腦測驗需申請重考！');
+                                            }}}
                                             className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${allAnswered ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                           >
                                             📝 交卷（共 {timedExams.length} 題{!allAnswered ? '，請先完成所有題目' : ''}）
