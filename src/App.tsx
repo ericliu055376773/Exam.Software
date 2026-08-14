@@ -697,7 +697,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   // === App 設定 (標題、Logo) ===
-  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答' });
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [] });
   const [editAppTitle, setEditAppTitle] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showAppConfigModal, setShowAppConfigModal] = useState(false);
@@ -927,7 +927,7 @@ export default function App() {
       doc(db, 'settings', 'appConfig'),
       (snap) => {
         if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', ...snap.data() });
-        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答' });
+        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [] });
       }
     );
 
@@ -953,6 +953,8 @@ export default function App() {
   const currentUserData = employees.find((e) => e.name === currentUserName);
   const isGrader =
     canEdit || (dailyConfig.graderRoles || []).includes(currentUserRole);
+  const canApproveRetest =
+    canEdit || (appConfig.retestApprovalRoles || []).includes(currentUserRole);
 
   // === 考試計時器 ===
   useEffect(() => {
@@ -984,7 +986,7 @@ export default function App() {
   };
 
   let pendingRetests = [];
-  if (canEdit || isGrader) {
+  if (canApproveRetest) {
     const retestTargetEmps = canEdit
       ? employees
       : employees.filter((e) => e.store === currentUserData?.store);
@@ -1026,7 +1028,7 @@ export default function App() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      (canEdit || isGrader) &&
+      (canApproveRetest) (canEdit || isGrader) &&(canEdit || isGrader) &&
       totalAdminNotifications > 0 &&
       !hasShownLoginNotice
     ) {
@@ -1415,6 +1417,13 @@ export default function App() {
   const filteredCategories = examMode
     ? enrichedCategories.filter((c) => (c.examGroup || 'newcomer') === examMode)
     : enrichedCategories;
+
+  // 自動選取第一個篩選後的分類
+  useEffect(() => {
+    if (filteredCategories.length > 0 && !filteredCategories.find(c => c.id === activeCategoryId)) {
+      setActiveCategoryId(filteredCategories[0].id);
+    }
+  }, [filteredCategories, activeCategoryId, examMode]);
 
   const activeCategoryData =
     enrichedCategories.find((c) => c.id === activeCategoryId) || null;
@@ -1867,7 +1876,7 @@ export default function App() {
       <style>{customStyles}</style>
 
       {/* 系統通知彈出視窗 */}
-      {showNotificationModal && (canEdit || isGrader) && (
+      {showNotificationModal && (canApproveRetest) (canEdit || isGrader) &&(canEdit || isGrader) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col border-none">
             <div className="flex justify-between items-center mb-6">
@@ -2115,7 +2124,7 @@ export default function App() {
                 <Settings c="w-4 h-4" />
               </button>
             )}
-            {(canEdit || (isGrader && pendingRetests.length > 0)) && (
+            {(canApproveRetest && pendingRetests.length > 0) && (
               <button
                 onClick={() => setShowNotificationModal(true)}
                 className="relative bg-white/10 p-2.5 rounded-full hover:bg-white/20 transition-all group cursor-pointer border border-white/5"
@@ -2313,13 +2322,13 @@ export default function App() {
                 {/* 管理員模式切換 */}
                 {canEdit && (
                   <div className="flex gap-2 mb-4">
-                    <button onClick={() => setExamMode('newcomer')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${examMode === 'newcomer' ? 'bg-[#3B82F6] text-white shadow-md' : 'bg-[#EBF2FF] text-[#3B82F6]'}`}>
+                    <button onClick={() => { setExamMode('newcomer'); setActiveCategoryId(null); }} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${examMode === 'newcomer' ? 'bg-[#3B82F6] text-white shadow-md' : 'bg-[#EBF2FF] text-[#3B82F6]'}`}>
                       🌱 新人考題
                     </button>
-                    <button onClick={() => setExamMode('veteran')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${examMode === 'veteran' ? 'bg-[#D85E38] text-white shadow-md' : 'bg-[#FCEEEA] text-[#D85E38]'}`}>
+                    <button onClick={() => { setExamMode('veteran'); setActiveCategoryId(null); }} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${examMode === 'veteran' ? 'bg-[#D85E38] text-white shadow-md' : 'bg-[#FCEEEA] text-[#D85E38]'}`}>
                       ⭐ 老鳥考題
                     </button>
-                    <button onClick={() => setExamMode(null)} className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${!examMode ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}>
+                    <button onClick={() => { setExamMode(null); setActiveCategoryId(null); }} className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${!examMode ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}>
                       全部
                     </button>
                   </div>
@@ -2354,11 +2363,11 @@ export default function App() {
                   </div>
                   {canEdit && (
                     <button
-                      onClick={() => setActiveTab('exam-grading')}
+                      onClick={() => setActiveTab('exam-settings')}
                       className="bg-[#FCEEEA] text-[#D85E38] px-4 py-2 rounded-full shadow-sm hover:scale-105 transition-transform flex items-center gap-2 font-bold text-xs"
-                      title="考試評分紀錄"
+                      title="設定管理"
                     >
-                      <ClipboardCheck c="w-4 h-4" /> 評分紀錄
+                      <ClipboardCheck c="w-4 h-4" /> 設定管理
                     </button>
                   )}
                 </div>
@@ -3511,6 +3520,23 @@ export default function App() {
                                   >
                                     <Edit c="w-4 h-4" />
                                   </button>
+                                  <select
+                                    value=""
+                                    onChange={async (e) => {
+                                      if (e.target.value) {
+                                        await updateDoc(doc(db, 'exams', exam.id), { categoryId: e.target.value });
+                                        showToast('考題已移動！');
+                                      }
+                                    }}
+                                    className="w-8 h-8 bg-white rounded-full shadow-sm text-gray-400 hover:text-[#5C6AC4] cursor-pointer appearance-none text-center text-xs p-0 border-none outline-none"
+                                    title="移動至其他分類"
+                                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpath d='M5 9l4-4 4 4M5 15l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }}
+                                  >
+                                    <option value="">移動</option>
+                                    {categories.filter(c => c.id !== activeCategoryId).map((cat) => (
+                                      <option key={cat.id} value={cat.id}>→ {cat.name}</option>
+                                    ))}
+                                  </select>
                                   {deletingExamId === exam.id ? (
                                     <button
                                       onClick={() => {
@@ -4457,8 +4483,82 @@ export default function App() {
               </div>
             )}
 
+            {/* --- 設定管理 --- */}
+            {activeTab === 'exam-settings' && canEdit && (
+              <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                <div className="flex items-center gap-3 mb-4 mt-2 px-1">
+                  <button
+                    onClick={() => setActiveTab('exams')}
+                    className="p-2 bg-white rounded-full soft-shadow text-gray-500 hover:text-[#1A1A1A] transition-colors border-none"
+                  >
+                    <ChevronLeft c="w-5 h-5" />
+                  </button>
+                  <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight">
+                    設定管理<span className="text-[#D85E38]">.</span>
+                  </h2>
+                </div>
+
+                {/* 核准重考權限設定 */}
+                <div className="bg-white p-6 rounded-[24px] soft-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <RefreshCw c="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-[#1A1A1A] text-sm">核准重考權限</h3>
+                      <p className="text-[10px] text-gray-400">設定哪些職位的人員可以核准員工的重考申請</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {jobRoles.map((role) => {
+                      const approvalRoles = appConfig.retestApprovalRoles || [];
+                      const isEnabled = approvalRoles.includes(role);
+                      return (
+                        <div key={role} className="flex items-center justify-between bg-[#F7F8FA] p-3.5 rounded-xl">
+                          <span className="text-sm font-bold text-[#1A1A1A]">{role}</span>
+                          <button
+                            onClick={async () => {
+                              let newRoles;
+                              if (isEnabled) {
+                                newRoles = approvalRoles.filter((r) => r !== role);
+                              } else {
+                                newRoles = [...approvalRoles, role];
+                              }
+                              const newConfig = { ...appConfig, retestApprovalRoles: newRoles };
+                              setAppConfig(newConfig);
+                              await setDoc(doc(db, 'settings', 'appConfig'), newConfig, { merge: true });
+                              showToast(isEnabled ? `已關閉「${role}」的核准權限` : `已開啟「${role}」的核准權限`);
+                            }}
+                            className={`relative w-12 h-7 rounded-full transition-all ${isEnabled ? 'bg-[#2F7E5B]' : 'bg-gray-300'}`}
+                          >
+                            <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all ${isEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-3">※ 總管理員（super_admin）預設擁有所有權限，不需要額外設定</p>
+                </div>
+
+                {/* 目前有權限的職位列表 */}
+                <div className="bg-white p-6 rounded-[24px] soft-shadow">
+                  <h3 className="font-black text-[#1A1A1A] text-sm mb-3">目前有核准權限的職位</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-[11px] font-bold bg-gray-800 text-white px-3 py-1.5 rounded-full">super_admin（預設）</span>
+                    {(appConfig.retestApprovalRoles || []).map((role) => (
+                      <span key={role} className="text-[11px] font-bold bg-[#2F7E5B] text-white px-3 py-1.5 rounded-full">{role}</span>
+                    ))}
+                    {(appConfig.retestApprovalRoles || []).length === 0 && (
+                      <span className="text-[11px] font-bold text-gray-400">尚未設定其他職位</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* --- 考試評分紀錄 (Exam Grading) --- */}
-            {activeTab === 'exam-grading' && canEdit && (
+            {activeTab === 'exam-grading' || activeTab === 'exam-settings' && canEdit && (
               <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                 <div className="flex items-center gap-3 mb-4 mt-2 px-1">
                   <button
@@ -6799,14 +6899,14 @@ export default function App() {
             <button
               onClick={() => setActiveTab('exams')}
               className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${
-                activeTab === 'exams' || activeTab === 'exam-grading'
+                activeTab === 'exams' || activeTab === 'exam-grading' || activeTab === 'exam-settings'
                   ? 'text-[#D85E38]'
                   : 'text-gray-400'
               }`}
             >
               <div
                 className={`p-2 rounded-full ${
-                  activeTab === 'exams' || activeTab === 'exam-grading'
+                  activeTab === 'exams' || activeTab === 'exam-grading' || activeTab === 'exam-settings'
                     ? 'bg-[#FCEEEA]'
                     : 'bg-transparent'
                 }`}
