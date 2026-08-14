@@ -4105,7 +4105,7 @@ export default function App() {
                                               setCurrentAnswers({});
                                               if (allCorrect) showToast('🎉 全部答對！電腦測驗通過！');
                                               else showToast('❌ 有題目答錯，整份電腦測驗需申請重考！');
-                                            }}}
+                                            }}
                                             className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${allAnswered ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                           >
                                             📝 交卷（共 {timedExams.length} 題{!allAnswered ? '，請先完成所有題目' : ''}）
