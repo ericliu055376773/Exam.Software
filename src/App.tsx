@@ -2642,6 +2642,7 @@ export default function App() {
                                     name: newCategoryName.trim(),
                                     order: categories.length,
                                     createdAt: Date.now(),
+                                    examGroup: examMode || 'newcomer',
                                   }
                                 );
                                 setIsAddingCategory(false);
@@ -4261,86 +4262,45 @@ export default function App() {
                                                   <textarea
                                                     value={currentAnswers[exam.id] || ''}
                                                     onChange={(e) => handleAnswerChange(exam.id, e.target.value)}
-                                                    className="w-full p-3 bg-[#F7F8FA] border border-gray-200 rounded-xl text-sm outline-none min-h-[80px] resize-none"
+                                                    className="w-full p-3 bg-[#F7F8FA] border border-gray-200 rounded-xl text-sm outline-none min-h-[80px] resize-none focus:border-[#D85E38]"
                                                     placeholder={qType === 'fill' ? '請輸入答案...' : '請輸入你的回答...'}
                                                   />
-                                                  {currentAnswers[exam.id]?.trim() && (
-                                                    <button onClick={() => submitAnswer(exam)} className="w-full mt-3 bg-[#5C6AC4] text-white py-3 rounded-xl font-bold text-sm">
-                                                      <Send c="w-4 h-4 mr-2 inline" /> 送出作答
-                                                    </button>
-                                                  )}
                                                 </div>
                                               )}
 
                                               {!canEdit && !isPassed && !isPendingProctor && qType === 'oral' && (
-                                                <div className="mt-3 flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-green-200 bg-green-50/50">
+                                                <div className="mt-3 p-3 rounded-xl border-2 border-dashed border-green-200 bg-green-50/50">
                                                   <div className="flex items-center gap-2">
-                                                    <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
-                                                      <Mic c="w-5 h-5" />
+                                                    <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                                      <Mic c="w-4 h-4" />
                                                     </div>
-                                                    <p className="text-xs font-bold text-gray-500">請向考官口頭回答</p>
+                                                    <p className="text-xs font-bold text-gray-500">此題需現場向考官口頭回答</p>
                                                   </div>
-                                                  <button
-                                                    onClick={async () => {
-                                                      if (!selectedProctor) { showToast('請先選擇考官！'); return; }
-                                                      const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
-                                                      newRecords[exam.id] = { status: 'pending_proctor', timestamp: Date.now(), title: exam.title, mistakes: newRecords[exam.id]?.mistakes || 0, approver: selectedProctor, score: 0, pointValue: exam.pointValue ?? 10, userAnswer: '（口述作答）' };
-                                                      await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
-                                                      showToast('📝 已送出，請等待考官評分。');
-                                                    }}
-                                                    className="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50"
-                                                  >
-                                                    送出給考官
-                                                  </button>
                                                 </div>
                                               )}
 
                                               {!canEdit && !isPassed && !isPendingProctor && qType === 'practical' && (
-                                                <div className="mt-3 flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-red-200 bg-red-50/50">
+                                                <div className="mt-3 p-3 rounded-xl border-2 border-dashed border-red-200 bg-red-50/50">
                                                   <div className="flex items-center gap-2">
-                                                    <div className="w-10 h-10 rounded-full bg-red-100 text-red-500 flex items-center justify-center">
-                                                      <MonitorPlay c="w-5 h-5" />
+                                                    <div className="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center">
+                                                      <MonitorPlay c="w-4 h-4" />
                                                     </div>
-                                                    <p className="text-xs font-bold text-gray-500">請現場操作完成</p>
+                                                    <p className="text-xs font-bold text-gray-500">此題需現場操作完成</p>
                                                   </div>
-                                                  <button
-                                                    onClick={() => { if (!selectedProctor) { showToast('請先選擇考官！'); return; } setProctorModal({ show: true, examId: exam.id, proctorName: selectedProctor }); }}
-                                                    className="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50"
-                                                  >
-                                                    考官確認
-                                                  </button>
                                                 </div>
                                               )}
 
                                               {!canEdit && !isPassed && !isPendingProctor && qType === 'timed_task' && (() => {
                                                 let taskTime = { minutes: 0, seconds: 0 };
                                                 try { taskTime = JSON.parse(exam.correctAnswer || '{}'); } catch {}
-                                                const totalSec = (taskTime.minutes || 0) * 60 + (taskTime.seconds || 0);
                                                 return (
-                                                  <div className="mt-3 p-4 rounded-xl border-2 border-dashed border-yellow-300 bg-yellow-50/50">
-                                                    <div className="flex items-center justify-between mb-3">
-                                                      <div className="flex items-center gap-2">
-                                                        <div className="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center">
-                                                          <span className="text-lg">⏱</span>
-                                                        </div>
-                                                        <div>
-                                                          <p className="text-xs font-bold text-gray-600">限時任務</p>
-                                                          <p className="text-lg font-black text-[#CA8A04]">{taskTime.minutes || 0} 分 {taskTime.seconds || 0} 秒</p>
-                                                        </div>
+                                                  <div className="mt-3 p-3 rounded-xl border-2 border-dashed border-yellow-300 bg-yellow-50/50">
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center">
+                                                        <span className="text-sm">⏱</span>
                                                       </div>
+                                                      <p className="text-xs font-bold text-gray-500">限時任務：{taskTime.minutes || 0} 分 {taskTime.seconds || 0} 秒</p>
                                                     </div>
-                                                    <button
-                                                      onClick={async () => {
-                                                        if (!selectedProctor) { showToast('請先選擇考官！'); return; }
-                                                        const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
-                                                        newRecords[exam.id] = { status: 'pending_proctor', timestamp: Date.now(), title: exam.title, mistakes: newRecords[exam.id]?.mistakes || 0, approver: selectedProctor, score: 0, pointValue: exam.pointValue ?? 10, userAnswer: `（計時任務 ${taskTime.minutes || 0}分${taskTime.seconds || 0}秒）` };
-                                                        await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
-                                                        showToast('📝 已送出，請等待考官評分。');
-                                                      }}
-                                                      className="w-full py-3 bg-[#CA8A04] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#A16207] transition-all"
-                                                    >
-                                                      完成任務・送出給考官
-                                                    </button>
                                                   </div>
                                                 );
                                               })()}
@@ -4357,21 +4317,89 @@ export default function App() {
                                         return card;
                                       })}
                                       {!canEdit && showProctorSection && (() => {
+                                        const allDone = proctorExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor'))); });
+                                        const allPending = proctorExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'pending_proctor'; });
                                         const anyFailed = proctorExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
-                                        const allDone = proctorExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
                                         const ca = currentUserData?.categoryAttempts || {};
                                         const cd = ca[activeCategoryId] || {};
                                         const proctorAttempts = cd.proctor || 0;
                                         const proctorRetestRequested = cd.proctorRetestRequested;
-                                        if (!allDone || !anyFailed) return null;
-                                        if (proctorRetestRequested) {
-                                          return <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">⏳ 已申請考官測驗重考（第 {proctorAttempts + 1} 次），等待主管核准...</div>;
+
+                                        // 全部待審核 - 顯示等待考官
+                                        if (allPending) {
+                                          return (
+                                            <div className="mt-4 space-y-3">
+                                              <div className="w-full py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                                ⏳ 已交卷，等待考官輸入密碼評閱中...
+                                              </div>
+                                              <button
+                                                onClick={() => {
+                                                  if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                                                  setProctorReviewModal({ show: true, examId: proctorExams[0]?.id, proctorName: selectedProctor, password: '', verified: false });
+                                                }}
+                                                className="w-full py-4 bg-[#D85E38] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#C25330] active:scale-95 transition-all"
+                                              >
+                                                🔑 考官輸入密碼評閱
+                                              </button>
+                                            </div>
+                                          );
                                         }
-                                        return (
-                                          <button onClick={async () => { const ca2 = currentUserData?.categoryAttempts || {}; const cd2 = ca2[activeCategoryId] || {}; cd2.proctorRetestRequested = true; cd2.proctor = (cd2.proctor || 0); ca2[activeCategoryId] = cd2; await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca2 }); showToast('已申請考官測驗重考，請等待主管核准！'); }} className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95">
-                                            🔄 申請考官測驗重考（已考 {proctorAttempts} 次）
-                                          </button>
-                                        );
+
+                                        // 有失敗 - 顯示重考申請
+                                        if (allDone && anyFailed) {
+                                          if (proctorRetestRequested) {
+                                            return <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">⏳ 已申請考官測驗重考（第 {proctorAttempts + 1} 次），等待主管核准...</div>;
+                                          }
+                                          return (
+                                            <button onClick={async () => { const ca2 = currentUserData?.categoryAttempts || {}; const cd2 = ca2[activeCategoryId] || {}; cd2.proctorRetestRequested = true; ca2[activeCategoryId] = cd2; await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca2 }); showToast('已申請考官測驗重考，請等待主管核准！'); }} className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95">
+                                              🔄 申請考官測驗重考（已考 {proctorAttempts} 次）
+                                            </button>
+                                          );
+                                        }
+
+                                        // 尚未全部完成 - 顯示交卷按鈕
+                                        if (!allDone) {
+                                          const writableTypes = ['fill', 'essay'];
+                                          const writableExams = proctorExams.filter((e) => writableTypes.includes(e.type));
+                                          const nonWritableExams = proctorExams.filter((e) => !writableTypes.includes(e.type));
+                                          const allWritten = writableExams.every((e) => currentAnswers[e.id]?.trim());
+                                          const allNonWritableDone = nonWritableExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor')); });
+                                          // 筆答題都填完就可以交卷（口述/實作/計時題標記為待考官）
+                                          const canSubmit = allWritten;
+
+                                          return (
+                                            <button
+                                              disabled={!canSubmit}
+                                              onClick={async () => {
+                                                if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                                                const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
+                                                for (const exam of proctorExams) {
+                                                  if (newRecords[exam.id]?.status === 'passed' || newRecords[exam.id]?.status === 'pending_proctor') continue;
+                                                  const pv = exam.pointValue ?? 10;
+                                                  const pm = newRecords[exam.id]?.mistakes || 0;
+                                                  let userAnswer = currentAnswers[exam.id] || '';
+                                                  if (exam.type === 'oral') userAnswer = '（口述作答）';
+                                                  if (exam.type === 'practical') userAnswer = '（實作操作）';
+                                                  if (exam.type === 'timed_task') userAnswer = '（計時任務）';
+                                                  newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: 'pending_proctor', timestamp: Date.now(), title: exam.title, mistakes: pm, approver: selectedProctor, score: 0, pointValue: pv, userAnswer };
+                                                }
+                                                const ca3 = currentUserData?.categoryAttempts || {};
+                                                const cd3 = ca3[activeCategoryId] || {};
+                                                cd3.proctor = (cd3.proctor || 0) + 1;
+                                                cd3.lastProctorAt = Date.now();
+                                                ca3[activeCategoryId] = cd3;
+                                                await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca3 });
+                                                setCurrentAnswers({});
+                                                showToast('📝 考官測驗已交卷！請考官輸入密碼評閱。');
+                                              }}
+                                              className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${canSubmit ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                            >
+                                              📝 考官測驗交卷（共 {proctorExams.length} 題{!canSubmit ? '，請先完成填寫題目' : ''}）
+                                            </button>
+                                          );
+                                        }
+
+                                        return null;
                                       })()}
                                     </div>
                                   )}
@@ -6889,204 +6917,108 @@ export default function App() {
 
       {/* 考官評閱問答題視窗 */}
       {proctorReviewModal.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white p-8 rounded-[32px] w-full max-w-sm text-center shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <PenTool c="w-8 h-8 text-orange-600" />
-            </div>
-            <h3 className="font-black text-xl mb-2 text-[#1A1A1A]">考官評閱</h3>
-            <p className="text-sm text-gray-500 font-bold mb-4">
-              {proctorReviewModal.verified
-                ? '請確認該員工的作答是否通過？'
-                : '請輸入考官密碼以查看答案並評分'}
-              <br />
-              <span className="text-orange-600 text-[11px] mt-2 inline-block bg-orange-50 px-3 py-1 rounded-full">
-                評閱考官：{String(proctorReviewModal.proctorName)}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="text-center mb-4">
+              <div className="w-14 h-14 bg-orange-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                <PenTool c="w-7 h-7 text-orange-600" />
+              </div>
+              <h3 className="font-black text-lg text-[#1A1A1A]">考官評閱</h3>
+              <span className="text-orange-600 text-[11px] bg-orange-50 px-3 py-1 rounded-full font-bold">
+                考官：{String(proctorReviewModal.proctorName)}
               </span>
-            </p>
+            </div>
 
             {!proctorReviewModal.verified ? (
-              <div className="space-y-4">
-                <div className="text-left bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  {(() => {
-                    const reviewRecord =
-                      currentUserData?.examRecords?.[proctorReviewModal.examId];
-                    return (
-                      <div>
-                        <span className="text-[10px] text-gray-400 font-bold block mb-1">
-                          員工的作答：
-                        </span>
-                        <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap break-words">
-                          {reviewRecord?.userAnswer || '未填寫'}
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
+              <div className="space-y-3">
                 <input
                   type="password"
                   value={proctorReviewModal.password}
-                  onChange={(e) =>
-                    setProctorReviewModal({
-                      ...proctorReviewModal,
-                      password: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setProctorReviewModal({ ...proctorReviewModal, password: e.target.value })}
                   className="w-full p-3.5 bg-[#F0F2F5] rounded-xl font-bold text-sm text-[#1A1A1A] outline-none text-center tracking-[0.3em] border-2 border-transparent focus:border-orange-400"
-                  placeholder="請輸入考官密碼（6碼）"
+                  placeholder="請輸入考官密碼"
                   maxLength={6}
                 />
                 <button
                   onClick={() => {
-                    const proctorEmp = employees.find(
-                      (emp) => emp.name === proctorReviewModal.proctorName
-                    );
-                    if (
-                      proctorEmp &&
-                      proctorEmp.password === proctorReviewModal.password
-                    ) {
-                      setProctorReviewModal({
-                        ...proctorReviewModal,
-                        verified: true,
-                      });
+                    const proctorEmp = employees.find((emp) => emp.name === proctorReviewModal.proctorName);
+                    if (proctorEmp && proctorEmp.password === proctorReviewModal.password) {
+                      setProctorReviewModal({ ...proctorReviewModal, verified: true });
                     } else {
                       showToast('密碼錯誤，請重新輸入！');
-                      setProctorReviewModal({
-                        ...proctorReviewModal,
-                        password: '',
-                      });
+                      setProctorReviewModal({ ...proctorReviewModal, password: '' });
                     }
                   }}
-                  className="w-full py-3.5 bg-[#5C6AC4] text-white rounded-full font-bold text-sm shadow-lg hover:bg-indigo-700 transition-colors"
+                  className="w-full py-3.5 bg-[#5C6AC4] text-white rounded-full font-bold text-sm shadow-lg"
                 >
                   驗證密碼
                 </button>
-                <button
-                  onClick={() =>
-                    setProctorReviewModal({
-                      show: false,
-                      examId: null,
-                      proctorName: '',
-                      password: '',
-                      verified: false,
-                    })
-                  }
-                  className="w-full py-3.5 bg-gray-100 text-gray-600 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors"
-                >
-                  取消返回
+                <button onClick={() => setProctorReviewModal({ show: false, examId: null, proctorName: '', password: '', verified: false })} className="w-full py-3 bg-gray-100 text-gray-500 rounded-full font-bold text-sm">
+                  取消
                 </button>
               </div>
             ) : (
-              <>
+              <div className="space-y-4">
+                <p className="text-xs text-gray-500 font-bold text-center">請逐題確認員工的作答，全部評閱後按下方按鈕完成</p>
                 {(() => {
-                  const reviewExam = exams.find(
-                    (e) => e.id === proctorReviewModal.examId
-                  );
-                  const reviewRecord =
-                    currentUserData?.examRecords?.[proctorReviewModal.examId];
-                  return (
-                    <div className="text-left bg-gray-50 p-4 rounded-xl mb-6 border border-gray-100 max-h-[40vh] overflow-y-auto">
-                      <div className="mb-3">
-                        <span className="text-[10px] text-gray-400 font-bold block mb-1">
-                          員工的作答：
-                        </span>
-                        <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap break-words">
-                          {reviewRecord?.userAnswer || '未填寫'}
-                        </p>
+                  const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+                  const proctorExamsForReview = activeExams.filter((e) => proctorTypeList.includes(e.type) && currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
+                  return proctorExamsForReview.map((exam) => {
+                    const record = currentUserData?.examRecords?.[exam.id];
+                    return (
+                      <div key={exam.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p className="text-xs text-gray-400 font-bold mb-1">{exam.title}</p>
+                        <div className="mb-2">
+                          <span className="text-[10px] text-gray-400 font-bold">員工作答：</span>
+                          <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap">{record?.userAnswer || '未填寫'}</p>
+                        </div>
+                        <div className="border-t border-gray-200 pt-2">
+                          <span className="text-[10px] text-[#D85E38] font-bold">標準答案：</span>
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap">{exam.correctAnswer || '未設定'}</p>
+                        </div>
                       </div>
-                      <div className="border-t border-gray-200 pt-3">
-                        <span className="text-[10px] text-[#D85E38] font-bold block mb-1">
-                          後台標準答案：
-                        </span>
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">
-                          {reviewExam?.correctAnswer || '未設定標準答案'}
-                        </p>
-                      </div>
-                    </div>
-                  );
+                    );
+                  });
                 })()}
-
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2 pt-2">
                   <button
                     onClick={async () => {
-                      const exam = exams.find(
-                        (e) => e.id === proctorReviewModal.examId
-                      );
-                      if (!exam) return;
+                      const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+                      const proctorExamsForReview = activeExams.filter((e) => proctorTypeList.includes(e.type) && currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
                       const newRecords = { ...currentUserData.examRecords };
-                      const prevMistakes = newRecords[exam.id]?.mistakes || 0;
-                      newRecords[exam.id] = {
-                        ...newRecords[exam.id],
-                        status: 'passed',
-                        approver: proctorReviewModal.proctorName,
-                        timestamp: Date.now(),
-                        title: exam.title,
-                        mistakes: prevMistakes,
-                      };
-                      await updateDoc(doc(db, 'employees', currentUserData.id), {
-                        examRecords: newRecords,
-                      });
-                      showToast('已核准通過！');
-                      setProctorReviewModal({
-                        show: false,
-                        examId: null,
-                        proctorName: '',
-                        password: '',
-                        verified: false,
-                      });
+                      for (const exam of proctorExamsForReview) {
+                        newRecords[exam.id] = { ...newRecords[exam.id], status: 'passed', approver: proctorReviewModal.proctorName, timestamp: Date.now() };
+                      }
+                      await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                      showToast('🎉 全部通過！');
+                      setProctorReviewModal({ show: false, examId: null, proctorName: '', password: '', verified: false });
                     }}
-                    className="w-full py-3.5 bg-[#2F7E5B] text-white rounded-full font-bold text-sm shadow-lg hover:bg-[#256348] transition-colors"
+                    className="w-full py-3.5 bg-[#2F7E5B] text-white rounded-full font-bold text-sm shadow-lg"
                   >
-                    通過 (Pass)
+                    ✅ 全部通過
                   </button>
                   <button
                     onClick={async () => {
-                      const exam = exams.find(
-                        (e) => e.id === proctorReviewModal.examId
-                      );
-                      if (!exam) return;
+                      const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+                      const proctorExamsForReview = activeExams.filter((e) => proctorTypeList.includes(e.type) && currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
                       const newRecords = { ...currentUserData.examRecords };
-                      const prevMistakes = newRecords[exam.id]?.mistakes || 0;
-                      newRecords[exam.id] = {
-                        ...newRecords[exam.id],
-                        status: 'failed',
-                        approver: proctorReviewModal.proctorName,
-                        timestamp: Date.now(),
-                        title: exam.title,
-                        mistakes: prevMistakes + 1,
-                      };
-                      await updateDoc(doc(db, 'employees', currentUserData.id), {
-                        examRecords: newRecords,
-                      });
-                      showToast('已退回，需重新作答。');
-                      setProctorReviewModal({
-                        show: false,
-                        examId: null,
-                        proctorName: '',
-                        password: '',
-                        verified: false,
-                      });
+                      for (const exam of proctorExamsForReview) {
+                        const pm = newRecords[exam.id]?.mistakes || 0;
+                        newRecords[exam.id] = { ...newRecords[exam.id], status: 'failed', approver: proctorReviewModal.proctorName, timestamp: Date.now(), mistakes: pm + 1 };
+                      }
+                      await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                      showToast('❌ 已退回，需重新作答。');
+                      setProctorReviewModal({ show: false, examId: null, proctorName: '', password: '', verified: false });
                     }}
-                    className="w-full py-3.5 bg-red-500 text-white rounded-full font-bold text-sm shadow-lg hover:bg-red-600 transition-colors"
+                    className="w-full py-3.5 bg-red-500 text-white rounded-full font-bold text-sm shadow-lg"
                   >
-                    不通過 (Fail)
+                    ❌ 不通過（整份退回）
                   </button>
-                  <button
-                    onClick={() =>
-                      setProctorReviewModal({
-                        show: false,
-                        examId: null,
-                        proctorName: '',
-                        password: '',
-                        verified: false,
-                      })
-                    }
-                    className="w-full py-3.5 bg-gray-100 text-gray-600 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors"
-                  >
-                    取消返回
+                  <button onClick={() => setProctorReviewModal({ show: false, examId: null, proctorName: '', password: '', verified: false })} className="w-full py-3 bg-gray-100 text-gray-500 rounded-full font-bold text-sm">
+                    取消
                   </button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
