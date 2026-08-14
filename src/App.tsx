@@ -1028,7 +1028,7 @@ export default function App() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      (canApproveRetest) (canEdit || isGrader) &&(canEdit || isGrader) &&
+      canApproveRetest &&
       totalAdminNotifications > 0 &&
       !hasShownLoginNotice
     ) {
@@ -1419,11 +1419,12 @@ export default function App() {
     : enrichedCategories;
 
   // 自動選取第一個篩選後的分類
+  const filteredCatIds = filteredCategories.map(c => c.id).join(',');
   useEffect(() => {
     if (filteredCategories.length > 0 && !filteredCategories.find(c => c.id === activeCategoryId)) {
       setActiveCategoryId(filteredCategories[0].id);
     }
-  }, [filteredCategories, activeCategoryId, examMode]);
+  }, [filteredCatIds, examMode]);
 
   const activeCategoryData =
     enrichedCategories.find((c) => c.id === activeCategoryId) || null;
@@ -1876,7 +1877,7 @@ export default function App() {
       <style>{customStyles}</style>
 
       {/* 系統通知彈出視窗 */}
-      {showNotificationModal && (canApproveRetest) (canEdit || isGrader) &&(canEdit || isGrader) && (
+      {showNotificationModal && canApproveRetest && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col border-none">
             <div className="flex justify-between items-center mb-6">
