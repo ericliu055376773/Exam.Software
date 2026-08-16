@@ -2442,7 +2442,6 @@ export default function App() {
                                 <span className="text-3xl">✅</span>
                               </div>
                               <h4 className="font-black text-xl text-green-600 mb-1">考試通過！</h4>
-                              <p className="text-sm text-gray-500 font-bold">分數：<span className="text-green-600 font-black text-lg">{catProg.score}</span> / {catProg.totalPoints} 分</p>
                               <p className="text-[10px] text-gray-400 mt-1">全部答對即通過</p>
                             </div>
                           );
@@ -4561,6 +4560,50 @@ export default function App() {
                     )}
                   </div>
                 </div>
+
+                {/* 重置員工考試 */}
+                <div className="bg-white p-6 rounded-[24px] soft-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                      <Trash2 c="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-[#1A1A1A] text-sm">重置員工考試</h3>
+                      <p className="text-[10px] text-gray-400">選擇員工和分類，可重置已通過的考試讓員工重新作答</p>
+                    </div>
+                  </div>
+                  {employees.filter(e => e.examRecords && Object.keys(e.examRecords).length > 0).map((emp) => (
+                    <div key={emp.id} className="mb-3 bg-[#F7F8FA] p-4 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
+                        <span className="text-[10px] text-gray-400">{emp.store} · {emp.role}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {categories.map((cat) => {
+                          const catExams = exams.filter(e => e.categoryId === cat.id);
+                          const hasRecords = catExams.some(e => emp.examRecords?.[e.id]);
+                          if (!hasRecords) return null;
+                          const allPassed = catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                          return (
+                            <button
+                              key={cat.id}
+                              onClick={async () => {
+                                if (!confirm(`確定要重置 ${emp.name} 的「${cat.name}」所有考試紀錄嗎？`)) return;
+                                const newRecords = { ...emp.examRecords };
+                                catExams.forEach(e => { delete newRecords[e.id]; });
+                                await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords });
+                                showToast(`已重置 ${emp.name}「${cat.name}」的考試紀錄`);
+                              }}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${allPassed ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-500' : 'bg-orange-100 text-orange-500 hover:bg-red-100 hover:text-red-500'}`}
+                            >
+                              {allPassed ? '✅' : '⏳'} {cat.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -4775,35 +4818,6 @@ export default function App() {
                                                   <span className="text-[9px] text-gray-400">
                                                     {new Date(record.timestamp).toLocaleDateString()}
                                                   </span>
-                                                )}
-                                                {!record.retestRequested ? (
-                                                  <button
-                                                    onClick={async () => {
-                                                      const newRecords = { ...emp.examRecords };
-                                                      delete newRecords[exam.id];
-                                                      await updateDoc(doc(db, 'employees', emp.id), {
-                                                        examRecords: newRecords,
-                                                      });
-                                                      showToast(`已為 ${emp.name} 開放重考：${exam.title}`);
-                                                    }}
-                                                    className="text-[9px] font-bold text-white bg-[#D85E38] px-2.5 py-1 rounded-full hover:bg-[#C25330] transition-colors shadow-sm mt-0.5"
-                                                  >
-                                                    開放重考
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    onClick={async () => {
-                                                      const newRecords = { ...emp.examRecords };
-                                                      delete newRecords[exam.id];
-                                                      await updateDoc(doc(db, 'employees', emp.id), {
-                                                        examRecords: newRecords,
-                                                      });
-                                                      showToast(`已核准 ${emp.name} 重考：${exam.title}`);
-                                                    }}
-                                                    className="text-[9px] font-bold text-white bg-orange-500 px-2.5 py-1 rounded-full hover:bg-orange-600 transition-colors shadow-sm mt-0.5 animate-pulse"
-                                                  >
-                                                    核准重考
-                                                  </button>
                                                 )}
                                               </div>
                                             </div>
