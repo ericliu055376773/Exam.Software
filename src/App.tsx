@@ -746,9 +746,14 @@ export default function App() {
   const [examStartTime, setExamStartTime] = useState(null);
   const [examTimeRemaining, setExamTimeRemaining] = useState(null);
   const [examTimeUp, setExamTimeUp] = useState(false);
-  const [showTimedSection, setShowTimedSection] = useState(true);
+  const [showTimedSection, setShowTimedSection] = useState(false);
   const [showProctorSection, setShowProctorSection] = useState(false);
-  const [examMode, setExamMode] = useState(null); // null | 'newcomer' | 'veteran'
+  const [examMode, setExamMode] = useState(null);
+  const [timedSectionStarted, setTimedSectionStarted] = useState(false);
+  const [proctorSectionStarted, setProctorSectionStarted] = useState(false);
+  const [proctorSectionStartTime, setProctorSectionStartTime] = useState(null);
+  const [proctorTimeRemaining, setProctorTimeRemaining] = useState(null);
+  const [proctorTimeUp, setProctorTimeUp] = useState(false); // null | 'newcomer' | 'veteran'
 
   // 人員名單狀態
   const [searchQuery, setSearchQuery] = useState('');
@@ -956,9 +961,9 @@ export default function App() {
   const canApproveRetest =
     canEdit || (appConfig.retestApprovalRoles || []).includes(currentUserRole);
 
-  // === 考試計時器 ===
+  // === 電腦測驗計時器 ===
   useEffect(() => {
-    if (!examStarted || !examStartTime) return;
+    if (!timedSectionStarted || !examStartTime) return;
     const activeCat = categories.find((c) => c.id === activeCategoryId);
     const timeLimit = activeCat?.timeLimit;
     if (!timeLimit || timeLimit <= 0) {
@@ -976,7 +981,29 @@ export default function App() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [examStarted, examStartTime, activeCategoryId, categories]);
+  }, [timedSectionStarted, examStartTime, activeCategoryId, categories]);
+
+  // === 考官測驗計時器 ===
+  useEffect(() => {
+    if (!proctorSectionStarted || !proctorSectionStartTime) return;
+    const activeCat = categories.find((c) => c.id === activeCategoryId);
+    const timeLimit = activeCat?.proctorTimeLimit;
+    if (!timeLimit || timeLimit <= 0) {
+      setProctorTimeRemaining(null);
+      return;
+    }
+    const timeLimitMs = timeLimit * 60 * 1000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - proctorSectionStartTime;
+      const remaining = Math.max(0, timeLimitMs - elapsed);
+      setProctorTimeRemaining(remaining);
+      if (remaining <= 0) {
+        setProctorTimeUp(true);
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [proctorSectionStarted, proctorSectionStartTime, activeCategoryId, categories]);
 
   const handleRecordsTabClick = () => {
     setActiveTab('records');
@@ -1832,6 +1859,21 @@ export default function App() {
                   onChange={(e) =>
                     setSecretPwd(e.target.value.replace(/\D/g, '').slice(0, 4))
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (secretPwd === '0204') {
+                        setIsAuthenticated(true);
+                        setCurrentUserRole('super_admin');
+                        setCurrentUserName('總部管理員');
+                        setShowSecretModal(false);
+                        setAuthMode('login');
+                        setSecretPwd('');
+                      } else {
+                        showToast('密碼錯誤！');
+                        setSecretPwd('');
+                      }
+                    }
+                  }}
                   className="w-full p-4 bg-white/5 rounded-[20px] mb-6 text-center tracking-widest outline-none focus:ring-2 focus:ring-[#D85E38] font-bold text-white border-none"
                   placeholder="輸入密碼"
                 />
@@ -2373,179 +2415,48 @@ export default function App() {
                   )}
                 </div>
 
-                {!canEdit && !examStarted ? (
+                {!canEdit && (
                   <>
                     <div className="relative mt-4 pt-2 mb-4">
-                      <button
-                        onClick={() => {
-                          if (categoryTabsRef.current) {
-                            categoryTabsRef.current.scrollBy({ left: -150, behavior: 'smooth' });
-                          }
-                        }}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
-                        style={{ marginLeft: '-4px' }}
-                      >
+                      <button onClick={() => { if (categoryTabsRef.current) categoryTabsRef.current.scrollBy({ left: -150, behavior: 'smooth' }); }} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center" style={{ marginLeft: '-4px' }}>
                         <ChevronLeft c="w-4 h-4 text-gray-600" />
                       </button>
-
                       <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
-                        {filteredCategories.map((cat, idx) => {
+                        {filteredCategories.map((cat) => {
                           const catPassed = cat.progress?.isPassed;
                           return (
-                            <button
-                              key={cat.id}
-                              onClick={() => {
-                                setActiveCategoryId(cat.id);
-                                setExamStarted(false);
-                                setSelectedProctor('');
-                                setExamStartTime(null);
-                                setExamTimeRemaining(null);
-                                setExamTimeUp(false);
-                              }}
-                              className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
-                                activeCategoryId === cat.id
-                                  ? catPassed
-                                    ? 'bg-green-50 text-green-600 border-green-200 z-10 pb-4'
-                                    : 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                                  : catPassed
-                                  ? 'bg-green-50 text-green-500 border-transparent hover:bg-green-100'
-                                  : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                              }`}
-                            >
+                            <button key={cat.id} onClick={() => {
+                              setActiveCategoryId(cat.id);
+                              setTimedSectionStarted(false); setProctorSectionStarted(false);
+                              setSelectedProctor(''); setShowTimedSection(false); setShowProctorSection(false);
+                              setExamStartTime(null); setExamTimeRemaining(null); setExamTimeUp(false);
+                              setProctorSectionStartTime(null); setProctorTimeRemaining(null); setProctorTimeUp(false);
+                            }} className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
+                              activeCategoryId === cat.id ? (catPassed ? 'bg-green-50 text-green-600 border-green-200 z-10 pb-4' : 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4') : (catPassed ? 'bg-green-50 text-green-500 border-transparent' : 'bg-[#F0F2F5] text-gray-400 border-transparent')
+                            }`}>
                               {catPassed && <span className="text-sm">✅</span>}
                               {String(cat.name)}
                             </button>
                           );
                         })}
                       </div>
-
-                      <button
-                        onClick={() => {
-                          if (categoryTabsRef.current) {
-                            categoryTabsRef.current.scrollBy({ left: 150, behavior: 'smooth' });
-                          }
-                        }}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
-                        style={{ marginRight: '-4px' }}
-                      >
+                      <button onClick={() => { if (categoryTabsRef.current) categoryTabsRef.current.scrollBy({ left: 150, behavior: 'smooth' }); }} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center" style={{ marginRight: '-4px' }}>
                         <ChevronRight c="w-4 h-4 text-gray-600" />
                       </button>
                     </div>
 
-                    <div className="bg-white p-6 rounded-[24px] soft-shadow border border-gray-100 animate-in fade-in">
-                      {(() => {
-                        const catProg = activeCategoryData?.progress;
-                        if (catProg?.isPassed) {
-                          return (
-                            <div className="text-center py-4">
-                              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <span className="text-3xl">✅</span>
-                              </div>
-                              <h4 className="font-black text-xl text-green-600 mb-1">考試通過！</h4>
-                              <p className="text-[10px] text-gray-400 mt-1">全部答對即通過</p>
-                            </div>
-                          );
-                        }
-                        return (
-                          <>
-                            <div className="flex items-center gap-3 mb-4">
-                              <div className="w-12 h-12 bg-[#FCEEEA] rounded-full flex items-center justify-center">
-                                <User c="w-6 h-6 text-[#D85E38]" />
-                              </div>
-                              <div>
-                                <h4 className="font-black text-[#1A1A1A] text-sm">選擇考官</h4>
-                                <p className="text-[10px] text-gray-400 font-bold">選定後即可進入題庫作答</p>
-                              </div>
-                            </div>
-                      {(() => {
-                        const activeCat = categories.find((c) => c.id === activeCategoryId);
-                        const tl = activeCat?.timeLimit;
-                        const proctorTypes = ['essay', 'oral'];
-                        const timedCount = activeExams.filter((e) => !proctorTypes.includes(e.type)).length;
-                        const proctorCount = activeExams.filter((e) => proctorTypes.includes(e.type)).length;
-                        return tl && tl > 0 ? (
-                          <div className="w-full bg-[#EBF2FF] p-3 rounded-xl mb-4">
-                            <p className="text-xs font-black text-[#3B82F6]">⏱ 限時 {tl} 分鐘</p>
-                            <p className="text-[10px] text-[#3B82F6]/70 font-bold">
-                              計時 {timedCount} 題{proctorCount > 0 && `，不計時 ${proctorCount} 題`}
-                            </p>
-                          </div>
-                        ) : null;
-                      })()}
-                      <div className="flex gap-2">
-                        <select
-                          value={selectedProctor}
-                          onChange={(e) => setSelectedProctor(e.target.value)}
-                          className="flex-1 bg-[#F0F2F5] p-3.5 rounded-xl text-sm font-bold text-[#1A1A1A] outline-none appearance-none"
-                        >
-                          <option value="">請選擇考官...</option>
-                          {employees
-                            .filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id)
-                            .map((e) => (
-                              <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
-                            ))}
-                        </select>
-                        <button
-                          onClick={() => {
-                            if (!selectedProctor) { showToast('請先選擇考官！'); return; }
-                            setExamStarted(true);
-                            setExamStartTime(Date.now());
-                            setExamTimeUp(false);
-                            setExamTimeRemaining(null);
-                          }}
-                          className="bg-[#D85E38] text-white px-6 py-3.5 rounded-xl font-bold text-sm shadow-lg hover:bg-[#C25330] transition-all active:scale-95 whitespace-nowrap"
-                        >
-                          開始考試
-                        </button>
+                    {activeCategoryData?.progress?.isPassed && (
+                      <div className="bg-white p-6 rounded-[24px] soft-shadow border border-gray-100 text-center py-8">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3"><span className="text-3xl">✅</span></div>
+                        <h4 className="font-black text-xl text-green-600 mb-1">考試通過！</h4>
+                        <p className="text-[10px] text-gray-400">全部答對即通過</p>
                       </div>
-                          </>
-                        );
-                      })()}
-                    </div>
+                    )}
                   </>
-                ) : (
+                )}
+
+                {(canEdit || !activeCategoryData?.progress?.isPassed) && (
                   <>
-                    {!canEdit && examStarted && (
-                      <div className="bg-white p-3 rounded-[20px] shadow-sm border border-gray-100 flex justify-between items-center mb-4 mt-2">
-                        <div className="flex items-center gap-2">
-                          <div className="bg-[#FCEEEA] p-1.5 rounded-full">
-                            <User c="w-3.5 h-3.5 text-[#D85E38]" />
-                          </div>
-                          <span className="text-xs font-bold text-gray-600">
-                            考官:{' '}
-                            <span className="text-[#1A1A1A]">
-                              {String(selectedProctor)}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {examTimeRemaining !== null && (
-                            <span className={`text-xs font-black px-3 py-1.5 rounded-full ${
-                              examTimeUp
-                                ? 'bg-red-100 text-red-600 animate-pulse'
-                                : examTimeRemaining < 60000
-                                ? 'bg-red-100 text-red-600'
-                                : examTimeRemaining < 180000
-                                ? 'bg-orange-100 text-orange-600'
-                                : 'bg-[#EBF2FF] text-[#3B82F6]'
-                            }`}>
-                              {examTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(examTimeRemaining / 60000)}:${String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
-                            </span>
-                          )}
-                          <button
-                            onClick={() => {
-                              setExamStarted(false);
-                              setSelectedProctor('');
-                              setExamStartTime(null);
-                              setExamTimeRemaining(null);
-                              setExamTimeUp(false);
-                            }}
-                            className="text-[10px] text-gray-500 font-bold bg-[#F0F2F5] px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors"
-                          >
-                            結束 / 更換
-                          </button>
-                        </div>
-                      </div>
                     )}
 
                     <div className="relative mt-4 pt-2 mb-4">
@@ -2934,6 +2845,38 @@ export default function App() {
                                   </button>
                                   {showTimedSection && (
                                     <div className="bg-white p-3 space-y-4">
+                                      {!canEdit && !timedSectionStarted ? (
+                                        <div className="p-4 bg-[#EBF2FF]/50 rounded-xl space-y-3">
+                                          <p className="text-xs font-bold text-[#3B82F6]">請選擇考官後開始電腦測驗</p>
+                                          {(activeCategoryData?.timeLimit ?? 0) > 0 && (
+                                            <p className="text-[10px] text-[#3B82F6]/70 font-bold">⏱ 限時 {activeCategoryData.timeLimit} 分鐘</p>
+                                          )}
+                                          <div className="flex gap-2">
+                                            <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
+                                              <option value="">請選擇考官...</option>
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                                <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
+                                              ))}
+                                            </select>
+                                            <button onClick={() => { if (!selectedProctor) { showToast('請先選擇考官！'); return; } setTimedSectionStarted(true); setExamStarted(true); setExamStartTime(Date.now()); setExamTimeUp(false); setExamTimeRemaining(null); }} className="bg-[#3B82F6] text-white px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap">
+                                              開始
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          {!canEdit && timedSectionStarted && (
+                                            <div className="flex items-center justify-between bg-[#EBF2FF]/50 p-2.5 rounded-xl mb-2">
+                                              <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
+                                              <div className="flex items-center gap-2">
+                                                {examTimeRemaining !== null && (
+                                                  <span className={`text-xs font-black px-3 py-1 rounded-full ${examTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : examTimeRemaining < 60000 ? 'bg-red-100 text-red-600' : 'bg-[#EBF2FF] text-[#3B82F6]'}`}>
+                                                    {examTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(examTimeRemaining / 60000)}:${String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
                                       {timedExams.map((exam) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
@@ -3570,7 +3513,7 @@ export default function App() {
                               </div>
 
                               <div className="bg-white rounded-[16px] p-5 shadow-sm border border-gray-50">
-                                <h3 className="font-black text-[#1A1A1A] text-base mb-2 leading-relaxed text-left">
+                                <h3 className="font-black text-[#1A1A1A] text-base mb-6 leading-relaxed text-left">
                                   {String(exam.title)}
                                 </h3>
                                 {exam.description && (
@@ -4112,6 +4055,8 @@ export default function App() {
                                           </button>
                                         );
                                       })()}
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -4138,6 +4083,36 @@ export default function App() {
                                   </button>
                                   {showProctorSection && (
                                     <div className="bg-white p-3 space-y-4">
+                                      {!canEdit && !proctorSectionStarted ? (
+                                        <div className="p-4 bg-[#FCEEEA]/50 rounded-xl space-y-3">
+                                          <p className="text-xs font-bold text-[#D85E38]">請選擇考官後開始考官測驗</p>
+                                          {(activeCategoryData?.proctorTimeLimit ?? 0) > 0 && (
+                                            <p className="text-[10px] text-[#D85E38]/70 font-bold">⏱ 限時 {activeCategoryData.proctorTimeLimit} 分鐘</p>
+                                          )}
+                                          <div className="flex gap-2">
+                                            <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
+                                              <option value="">請選擇考官...</option>
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                                <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
+                                              ))}
+                                            </select>
+                                            <button onClick={() => { if (!selectedProctor) { showToast('請先選擇考官！'); return; } setProctorSectionStarted(true); setProctorSectionStartTime(Date.now()); setProctorTimeUp(false); setProctorTimeRemaining(null); }} className="bg-[#D85E38] text-white px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap">
+                                              開始
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          {!canEdit && proctorSectionStarted && (
+                                            <div className="flex items-center justify-between bg-[#FCEEEA]/50 p-2.5 rounded-xl mb-2">
+                                              <span className="text-xs font-bold text-[#D85E38]">考官：{selectedProctor}</span>
+                                              {proctorTimeRemaining !== null && (
+                                                <span className={`text-xs font-black px-3 py-1 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-[#FCEEEA] text-[#D85E38]'}`}>
+                                                  {proctorTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(proctorTimeRemaining / 60000)}:${String(Math.floor((proctorTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
                                       {proctorExams.map((exam) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
@@ -4471,6 +4446,8 @@ export default function App() {
 
                                         return null;
                                       })()}
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -4608,1493 +4585,6 @@ export default function App() {
             )}
 
             {/* --- 考試評分紀錄 (Exam Grading) --- */}
-            {activeTab === 'exam-grading' || activeTab === 'exam-settings' && canEdit && (
-              <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center gap-3 mb-4 mt-2 px-1">
-                  <button
-                    onClick={() => setActiveTab('exams')}
-                    className="p-2 bg-white rounded-full soft-shadow text-gray-500 hover:text-[#1A1A1A] transition-colors border-none"
-                  >
-                    <ChevronLeft c="w-5 h-5" />
-                  </button>
-                  <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight">
-                    {appConfig.examGradingTitle || '考試評分紀錄'}<span className="text-[#D85E38]">.</span>
-                  </h2>
-                </div>
-
-                <div className="flex overflow-x-auto hide-scrollbar mt-4 pt-2 mb-4">
-                  <button
-                    onClick={() => setActiveExamStoreFilter('all')}
-                    className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px]
-                    ${
-                      activeExamStoreFilter === 'all'
-                        ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                        : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                    }`}
-                  >
-                    全部門店
-                  </button>
-                  {stores.map((store) => (
-                    <button
-                      key={`exam-store-${store.id}`}
-                      onClick={() => setActiveExamStoreFilter(store.name)}
-                      className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px]
-                      ${
-                        activeExamStoreFilter === store.name
-                          ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                          : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                      }
-                      `}
-                    >
-                      {String(store.name)}
-                    </button>
-                  ))}
-                  <div className="flex-1 border-b border-gray-200"></div>
-                </div>
-
-                <div className="space-y-4">
-                  {employees
-                    .filter(
-                      (emp) =>
-                        activeExamStoreFilter === 'all' ||
-                        emp.store === activeExamStoreFilter
-                    )
-                    .map((emp) => {
-                      // 計算「目前正在進行的考試分類名稱」
-                      let currentCategoryName = '已完成所有考核';
-                      for (let cat of categories) {
-                        const catExams = exams.filter(
-                          (e) =>
-                            e.categoryId === cat.id ||
-                            (!e.categoryId && cat.id === categories[0]?.id)
-                        );
-                        let catPassed = true;
-                        if (catExams.length > 0) {
-                          for (let ex of catExams) {
-                            const rec = emp.examRecords?.[ex.id];
-                            if (
-                              !rec ||
-                              (rec !== 'passed' && rec.status !== 'passed')
-                            ) {
-                              catPassed = false;
-                              break;
-                            }
-                          }
-                        } else {
-                          catPassed = true;
-                        }
-                        if (!catPassed && catExams.length > 0) {
-                          currentCategoryName = cat.name;
-                          break;
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={emp.id}
-                          className="bg-white rounded-[24px] p-5 soft-shadow border border-gray-100"
-                        >
-                          <div className="mb-4">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                  {(emp.avatarId || emp.avatarUrl) ? (
-                                    <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
-                                  ) : (
-                                    <User c="w-6 h-6 text-gray-400" />
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="font-black text-[15px] text-[#1A1A1A]">
-                                    {String(emp.name)}{' '}
-                                    <span className="text-[10px] text-gray-400 font-bold ml-1 bg-gray-100 px-2 py-0.5 rounded-full">
-                                      {String(emp.store)}
-                                    </span>
-                                  </p>
-                                  <div className="mt-1">
-                                    <RoleBadge role={emp.role} />
-                                  </div>
-                                </div>
-                              </div>
-                              <p
-                                className="text-[9px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100 max-w-[110px] truncate shrink-0"
-                                title={currentCategoryName}
-                              >
-                                進行中:{' '}
-                                <span className={currentCategoryName === '已完成所有考核' ? 'text-[#2F7E5B]' : 'text-[#D85E38]'}>
-                                  {String(currentCategoryName)}
-                                </span>
-                              </p>
-                            </div>
-                            {/* 成就解鎖進度條 — 獨立一行避免重疊 */}
-                            <div className="mt-3 overflow-x-auto hide-scrollbar">
-                              <AchievementProgress
-                                emp={emp}
-                                categories={categories}
-                                exams={exams}
-                                compact={true}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="bg-[#F0F2F5] rounded-xl p-3 space-y-3 mt-4">
-                            {categories.map((cat, idx) => {
-                              const catExams = exams.filter(
-                                (e) =>
-                                  e.categoryId === cat.id ||
-                                  (!e.categoryId && idx === 0)
-                              );
-                              const catRecords = catExams
-                                .map((ex) => ({
-                                  exam: ex,
-                                  record: emp.examRecords?.[ex.id],
-                                }))
-                                .filter(
-                                  (r) =>
-                                    r.record &&
-                                    (r.record === 'passed' || r.record.status)
-                                );
-
-                              if (catRecords.length === 0) return null;
-
-                              const failedRecords = catRecords.filter(
-                                (r) =>
-                                  r.record.status === 'failed' ||
-                                  r.record === 'failed'
-                              );
-                              const passedRecords = catRecords.filter(
-                                (r) =>
-                                  r.record.status === 'passed' ||
-                                  r.record === 'passed'
-                              );
-
-                              const latestRecord = [...catRecords].sort(
-                                (a, b) =>
-                                  (b.record.timestamp || 0) -
-                                  (a.record.timestamp || 0)
-                              )[0];
-                              const approverName =
-                                latestRecord?.record?.approver || '系統';
-
-                              return (
-                                <div
-                                  key={cat.id}
-                                  className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden"
-                                >
-                                  <div className="bg-[#F8FAFC] p-3 flex justify-between items-center border-b border-gray-100">
-                                    <span className="font-black text-[13px] text-[#1A1A1A]">
-                                      {String(cat.name)}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-[#D85E38] bg-[#FCEEEA] px-2.5 py-1 rounded-full">
-                                      考官: {String(approverName)}
-                                    </span>
-                                  </div>
-
-                                  <div className="p-3 space-y-2">
-                                    {failedRecords.length > 0 && (
-                                      <div className="space-y-2 mb-3">
-                                        {failedRecords.map(
-                                          ({ exam, record }) => (
-                                            <div
-                                              key={exam.id}
-                                              className="flex justify-between items-start p-2.5 bg-red-50/50 rounded-lg border border-red-100"
-                                            >
-                                              <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-bold text-gray-700">
-                                                  {String(exam.title)}
-                                                </span>
-                                                {record.score !== undefined && (
-                                                  <span className="text-[10px] font-black text-red-400">
-                                                    得分：{record.score} 分
-                                                  </span>
-                                                )}
-                                              </div>
-                                              <div className="flex flex-col items-end gap-1">
-                                                <span className="text-[10px] text-red-500 bg-white px-2 py-1 rounded-md font-bold flex items-center shadow-sm">
-                                                  <XCircle c="w-3 h-3 mr-1" />
-                                                  未通過
-                                                </span>
-                                                {record.timestamp && (
-                                                  <span className="text-[9px] text-gray-400">
-                                                    {new Date(record.timestamp).toLocaleDateString()}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {passedRecords.length > 0 && (
-                                      <details className="group">
-                                        <summary className="text-xs font-bold text-[#2F7E5B] cursor-pointer outline-none flex items-center bg-[#F1F8F5] p-2.5 rounded-lg select-none hover:bg-[#E2F1EA] transition-colors">
-                                          <CheckCircle2 c="w-4 h-4 mr-1.5" />
-                                          已通過項目 ({passedRecords.length})
-                                          <ChevronRight c="w-4 h-4 ml-auto transition-transform group-open:rotate-90" />
-                                        </summary>
-                                        <div className="space-y-2 mt-2 pl-1">
-                                          {passedRecords.map(
-                                            ({ exam, record }) => (
-                                              <div
-                                                key={exam.id}
-                                                className="flex justify-between items-center p-2 bg-white rounded-lg shadow-sm border border-gray-50"
-                                              >
-                                                <span className="text-[11px] font-bold text-gray-700">
-                                                  {String(exam.title)}
-                                                </span>
-                                                <div className="flex flex-col items-end">
-                                                  {record.score !== undefined && (
-                                                    <span className="text-[10px] font-black text-[#2F7E5B]">{record.score} 分</span>
-                                                  )}
-                                                  <span className="text-[9px] text-gray-400">
-                                                    {record.timestamp ? new Date(record.timestamp).toLocaleDateString() : ''}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            )
-                                          )}
-                                        </div>
-                                      </details>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-
-                            {Object.keys(emp.examRecords || {}).length ===
-                              0 && (
-                              <p className="text-xs text-gray-400 font-bold text-center py-2">
-                                尚未有考試紀錄
-                              </p>
-                            )}
-
-                            {emp.categoryAttempts && Object.keys(emp.categoryAttempts).length > 0 && (
-                              <div className="mt-4 pt-4 border-t border-gray-100">
-                                <h5 className="text-[11px] font-bold text-gray-400 mb-2">📊 各分類考試次數</h5>
-                                <div className="space-y-1.5">
-                                  {Object.entries(emp.categoryAttempts).map(([catId, catData]) => {
-                                    const cat = categories.find(c => c.id === catId);
-                                    return (
-                                      <div key={catId} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                                        <span className="text-xs font-bold text-gray-600">{cat?.name || catId}</span>
-                                        <div className="flex gap-3">
-                                          {(catData.timed || 0) > 0 && (
-                                            <span className="text-[10px] font-bold text-[#3B82F6] bg-[#EBF2FF] px-2 py-0.5 rounded-full">
-                                              💻 電腦 {catData.timed} 次
-                                            </span>
-                                          )}
-                                          {(catData.proctor || 0) > 0 && (
-                                            <span className="text-[10px] font-bold text-[#D85E38] bg-[#FCEEEA] px-2 py-0.5 rounded-full">
-                                              👨‍🏫 考官 {catData.proctor} 次
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
-
-            {/* --- 平時紀錄 (Daily Records) --- */}
-            {activeTab === 'records' && (
-              <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="mb-4 px-1 mt-2 flex justify-between items-end">
-                  <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight">
-                    {canEdit
-                      ? '平時紀錄審核'
-                      : isGrader
-                      ? '平時紀錄管理'
-                      : '我的平時紀錄'}
-                    <span className="text-[#D85E38]">.</span>
-                  </h2>
-                </div>
-
-                <div className="flex bg-[#F0F2F5] p-1.5 rounded-2xl mb-4 overflow-x-auto hide-scrollbar shrink-0">
-                  {canEdit && (
-                    <button
-                      onClick={() => setRecordTab('review')}
-                      className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                        recordTab === 'review'
-                          ? 'bg-white text-[#D85E38] shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      月結審核
-                    </button>
-                  )}
-                  {isGrader && (
-                    <button
-                      onClick={() => setRecordTab('grade')}
-                      className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                        recordTab === 'grade'
-                          ? 'bg-white text-[#D85E38] shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      人員打分
-                    </button>
-                  )}
-                  {canEdit && (
-                    <button
-                      onClick={() => setRecordTab('settings')}
-                      className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                        recordTab === 'settings'
-                          ? 'bg-white text-[#D85E38] shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      評分設定
-                    </button>
-                  )}
-                  {!canEdit && (
-                    <button
-                      onClick={() => setRecordTab('mine')}
-                      className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                        recordTab === 'mine'
-                          ? 'bg-white text-[#D85E38] shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      我的紀錄
-                    </button>
-                  )}
-                </div>
-
-                {recordTab === 'review' && canEdit && (
-                  <div className="space-y-5">
-                    <div className="bg-white p-5 rounded-[24px] soft-shadow border border-gray-100 flex items-center justify-between">
-                      <label className="font-black text-gray-700 flex items-center">
-                        <CalendarIcon c="w-5 h-5 mr-2 text-[#D85E38]" />{' '}
-                        選擇月份
-                      </label>
-                      <input
-                        type="month"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="p-2 bg-[#F0F2F5] rounded-xl outline-none font-bold text-sm text-[#1A1A1A] border-none"
-                      />
-                    </div>
-
-                    {employees.map((emp) => {
-                      const monthRecords = Object.entries(
-                        emp.dailyRecords || {}
-                      )
-                        .filter(([date]) => date.startsWith(selectedMonth))
-                        .sort((a, b) => b[0].localeCompare(a[0]));
-
-                      let totalScore = 0;
-                      let approvedDays = 0;
-                      let pendingDays = 0;
-                      monthRecords.forEach(([date, data]) => {
-                        const status = data.status || 'approved';
-                        if (status === 'pending') pendingDays++;
-                        else if (status === 'approved') {
-                          const scores = data.scores || data;
-                          const vals = Object.values(scores).map(Number);
-                          if (vals.length > 0) {
-                            totalScore +=
-                              vals.reduce((a, b) => a + b, 0) / vals.length;
-                            approvedDays++;
-                          }
-                        }
-                      });
-                      const monthlyAvg =
-                        approvedDays > 0
-                          ? Math.round(totalScore / approvedDays)
-                          : 0;
-                      if (monthRecords.length === 0 && pendingDays === 0)
-                        return null;
-
-                      return (
-                        <details
-                          key={`rev-${emp.id}`}
-                          className="bg-white rounded-[24px] soft-shadow border border-gray-100 group mb-4 overflow-hidden"
-                        >
-                          <summary className="p-5 flex items-center justify-between cursor-pointer outline-none list-none [&::-webkit-details-marker]:hidden hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                {(emp.avatarId || emp.avatarUrl) ? (
-                                  <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
-                                ) : (
-                                  <User c="w-6 h-6 text-gray-400" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-black text-[15px] text-[#1A1A1A]">
-                                  {String(emp.name)}
-                                </p>
-                                <p className="text-[10px] font-bold text-gray-400 mt-1">
-                                  {String(emp.store)} | {String(emp.role)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right flex flex-col items-end">
-                              <p className="text-[10px] text-gray-400 font-bold mb-1">
-                                本月總分
-                              </p>
-                              <p className="font-black text-2xl text-[#D85E38] leading-none">
-                                {monthlyAvg} <span className="text-xs">分</span>
-                              </p>
-                              {pendingDays > 0 && (
-                                <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full mt-2 font-black animate-pulse">
-                                  {pendingDays} 筆待審
-                                </span>
-                              )}
-                            </div>
-                          </summary>
-                          <div className="p-5 border-t border-gray-100 space-y-4 bg-[#F8FAFC]">
-                            {monthRecords.map(([dateStr, data]) => {
-                              const status = data.status || 'approved';
-                              const scores = data.scores || data;
-                              return (
-                                <div
-                                  key={dateStr}
-                                  className="bg-white p-4 rounded-[16px] shadow-sm border border-gray-50"
-                                >
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="font-black text-sm text-[#1A1A1A] flex items-center">
-                                      <CalendarIcon c="w-4 h-4 mr-1.5 text-gray-400" />
-                                      {dateStr}
-                                    </span>
-                                    <span
-                                      className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${
-                                        status === 'pending'
-                                          ? 'bg-orange-100 text-orange-600'
-                                          : 'bg-[#F1F8F5] text-[#2F7E5B]'
-                                      }`}
-                                    >
-                                      {status === 'pending'
-                                        ? '待審核'
-                                        : '已核准'}
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] text-gray-400 mb-3 font-bold border-b border-dashed pb-2">
-                                    評分人：{String(data.gradedBy || '管理員')}
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    {Object.entries(scores).map(
-                                      ([itemId, val]) => {
-                                        const item = dailyItems.find(
-                                          (i) => i.id === itemId
-                                        );
-                                        return (
-                                          <div
-                                            key={itemId}
-                                            className="flex justify-between items-center text-xs font-bold bg-[#F0F2F5] px-3 py-2 rounded-lg"
-                                          >
-                                            <span className="text-gray-600">
-                                              {String(
-                                                item?.title || '未知項目'
-                                              )}
-                                            </span>
-                                            <span className="text-[#D85E38] text-sm">
-                                              {String(val)}{' '}
-                                              <span className="text-[9px] text-gray-400">
-                                                分
-                                              </span>
-                                            </span>
-                                          </div>
-                                        );
-                                      }
-                                    )}
-                                  </div>
-                                  {status === 'pending' && canEdit && (
-                                    <div className="mt-4 flex justify-end">
-                                      <button
-                                        onClick={async () => {
-                                          const newRecs = {
-                                            ...emp.dailyRecords,
-                                          };
-                                          newRecs[dateStr].status = 'approved';
-                                          await updateDoc(
-                                            doc(db, 'employees', emp.id),
-                                            { dailyRecords: newRecs }
-                                          );
-                                          showToast('已核准此評分！');
-                                        }}
-                                        className="bg-[#1A1A1A] hover:bg-black text-white text-xs px-5 py-2.5 rounded-full font-bold shadow-md transition-all active:scale-95"
-                                      >
-                                        核准此紀錄
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </details>
-                      );
-                    })}
-                    {employees.every(
-                      (emp) =>
-                        Object.entries(emp.dailyRecords || {}).filter(
-                          ([date]) => date.startsWith(selectedMonth)
-                        ).length === 0
-                    ) && (
-                      <div className="text-center py-10 text-gray-400 font-bold text-sm bg-white rounded-[24px] soft-shadow border border-gray-100">
-                        本月尚未有任何平時紀錄
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {canEdit && recordTab === 'settings' && (
-                  <div className="space-y-4">
-                    <div className="bg-white p-5 rounded-[24px] soft-shadow border border-gray-100 mb-6 animate-in slide-in-from-bottom-4">
-                      <h3 className="font-black text-[#1A1A1A] mb-3 flex items-center text-lg">
-                        <Settings c="w-5 h-5 mr-2 text-[#D85E38]" />{' '}
-                        評分權限設定
-                      </h3>
-                      <p className="text-xs text-gray-500 font-bold mb-4 leading-relaxed">
-                        請勾選允許進行「人員打分」的職位，設定後該職位登入即可幫門店人員進行平時評分。(總部管理員預設擁有權限)
-                      </p>
-                      <div className="grid grid-cols-2 gap-3 bg-[#F0F2F5] p-4 rounded-xl">
-                        {jobRoles.map((role) => (
-                          <label
-                            key={`grader-${role}`}
-                            className="flex items-center gap-2 cursor-pointer py-1"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={dailyConfig.graderRoles?.includes(role)}
-                              onChange={async (e) => {
-                                const newRoles = e.target.checked
-                                  ? [...(dailyConfig.graderRoles || []), role]
-                                  : (dailyConfig.graderRoles || []).filter(
-                                      (r) => r !== role
-                                    );
-                                setDailyConfig({
-                                  ...dailyConfig,
-                                  graderRoles: newRoles,
-                                });
-                                await setDoc(
-                                  doc(db, 'settings', 'dailyConfig'),
-                                  { graderRoles: newRoles },
-                                  { merge: true }
-                                );
-                              }}
-                              className="w-4 h-4 text-[#D85E38] rounded border-gray-300 focus:ring-[#D85E38]"
-                            />
-                            <span className="text-sm font-bold text-gray-700">
-                              {String(role)}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={async () => {
-                        const newDoc = await addDoc(
-                          collection(db, 'dailyItems'),
-                          {
-                            title: '新增評分項目',
-                            targetRoles: [],
-                            createdAt: Date.now(),
-                          }
-                        );
-                        setEditingDailyItemId(newDoc.id);
-                        setEditDailyItemData({
-                          title: '新增評分項目',
-                          targetRoles: [],
-                        });
-                      }}
-                      className="w-full py-4 bg-[#FCEEEA] rounded-full text-sm text-[#D85E38] font-bold flex justify-center items-center hover:bg-[#F9E2DB] transition-colors shadow-sm"
-                    >
-                      <PlusCircle c="w-5 h-5 mr-2" /> 新增評分項目
-                    </button>
-
-                    {dailyItems.length === 0 ? (
-                      <div className="text-center py-10 bg-white rounded-[24px] text-gray-400 font-bold text-sm soft-shadow">
-                        目前尚未建立任何評分項目
-                      </div>
-                    ) : (
-                      dailyItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="bg-white p-5 rounded-[24px] soft-shadow border border-gray-100 relative"
-                        >
-                          {editingDailyItemId === item.id ? (
-                            <div className="space-y-4">
-                              <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1.5 block">
-                                  項目名稱
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editDailyItemData.title}
-                                  onChange={(e) =>
-                                    setEditDailyItemData({
-                                      ...editDailyItemData,
-                                      title: e.target.value,
-                                    })
-                                  }
-                                  className="w-full p-3.5 bg-[#F0F2F5] rounded-xl font-bold text-sm text-[#1A1A1A] outline-none focus:ring-2 focus:ring-[#D85E38]/50"
-                                  placeholder="例如：服裝儀容"
-                                />
-                              </div>
-                              <div>
-                                <div className="flex justify-between items-center mb-2">
-                                  <label className="text-xs font-bold text-gray-500 block pl-1">
-                                    適用職位 (打勾後才會出現在評分清單)
-                                  </label>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const isAllSelected =
-                                        (editDailyItemData.targetRoles || [])
-                                          .length === jobRoles.length;
-                                      setEditDailyItemData({
-                                        ...editDailyItemData,
-                                        targetRoles: isAllSelected
-                                          ? []
-                                          : [...jobRoles],
-                                      });
-                                    }}
-                                    className="text-[10px] font-bold px-3 py-1 rounded-md bg-[#FCEEEA] text-[#D85E38] hover:bg-[#F9E2DB] transition-colors"
-                                  >
-                                    {(editDailyItemData.targetRoles || [])
-                                      .length === jobRoles.length
-                                      ? '取消全選'
-                                      : '全選所有職位'}
-                                  </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 bg-[#F0F2F5] p-3 rounded-xl">
-                                  {jobRoles.map((role) => (
-                                    <label
-                                      key={role}
-                                      className="flex items-center gap-2 cursor-pointer py-1"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={(
-                                          editDailyItemData.targetRoles || []
-                                        ).includes(role)}
-                                        onChange={(e) => {
-                                          const newRoles = e.target.checked
-                                            ? [
-                                                ...(editDailyItemData.targetRoles ||
-                                                  []),
-                                                role,
-                                              ]
-                                            : (
-                                                editDailyItemData.targetRoles ||
-                                                []
-                                              ).filter((r) => r !== role);
-                                          setEditDailyItemData({
-                                            ...editDailyItemData,
-                                            targetRoles: newRoles,
-                                          });
-                                        }}
-                                        className="w-4 h-4 text-[#D85E38] rounded border-gray-300 focus:ring-[#D85E38]"
-                                      />
-                                      <span className="text-sm font-bold text-gray-700">
-                                        {String(role)}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="flex pt-2 gap-3">
-                                <button
-                                  onClick={() => setEditingDailyItemId(null)}
-                                  className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-full text-sm font-bold hover:bg-gray-200 transition-colors"
-                                >
-                                  取消
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    await updateDoc(
-                                      doc(db, 'dailyItems', item.id),
-                                      editDailyItemData
-                                    );
-                                    setEditingDailyItemId(null);
-                                    showToast('評分項目已儲存');
-                                  }}
-                                  className="flex-1 bg-[#1A1A1A] text-white py-3 rounded-full text-sm font-bold shadow-lg hover:bg-black transition-colors"
-                                >
-                                  儲存
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="absolute top-4 right-4 flex gap-1">
-                                <button
-                                  onClick={() => {
-                                    setEditingDailyItemId(item.id);
-                                    setEditDailyItemData({
-                                      title: item.title,
-                                      targetRoles: item.targetRoles || [],
-                                    });
-                                  }}
-                                  className="p-2 text-gray-400 hover:text-[#1A1A1A] bg-gray-50 rounded-full transition-colors"
-                                >
-                                  <Edit c="w-4 h-4" />
-                                </button>
-                                {deletingDailyItemId === item.id ? (
-                                  <button
-                                    onClick={async () => {
-                                      await deleteDoc(
-                                        doc(db, 'dailyItems', item.id)
-                                      );
-                                      setDeletingDailyItemId(null);
-                                      showToast('項目已刪除');
-                                    }}
-                                    className="bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold animate-in fade-in"
-                                  >
-                                    確定刪除?
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      setDeletingDailyItemId(item.id)
-                                    }
-                                    className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-full transition-colors"
-                                  >
-                                    <Trash2 c="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                              <h3 className="font-black text-[#1A1A1A] text-lg pr-16 mb-2">
-                                {String(item.title)}
-                              </h3>
-                              <div className="flex flex-wrap gap-1.5">
-                                {(item.targetRoles || []).length === 0 ? (
-                                  <span className="text-[10px] text-red-400 bg-red-50 px-2 py-1 rounded-md font-bold">
-                                    尚未設定適用職位
-                                  </span>
-                                ) : (
-                                  (item.targetRoles || []).map((r) => (
-                                    <span
-                                      key={r}
-                                      className="text-[10px] text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md font-bold"
-                                    >
-                                      {String(r)}
-                                    </span>
-                                  ))
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {isGrader && recordTab === 'grade' && (
-                  <div className="space-y-5">
-                    <div className="bg-white p-5 rounded-[24px] soft-shadow border border-gray-100 flex items-center justify-between sticky top-0 z-20">
-                      <label className="font-black text-gray-700 flex items-center">
-                        <CalendarIcon c="w-5 h-5 mr-2 text-[#D85E38]" />{' '}
-                        評分日期
-                      </label>
-                      <input
-                        type="date"
-                        value={selectedRecordDate}
-                        onChange={(e) => {
-                          setSelectedRecordDate(e.target.value);
-                          setGradingEmployeeId(null);
-                        }}
-                        className="p-2 bg-[#F0F2F5] rounded-xl outline-none font-bold text-sm text-[#1A1A1A] border-none"
-                      />
-                    </div>
-
-                    {(() => {
-                      const gradeTargetEmps = canEdit
-                        ? employees.filter((e) => e.id !== currentUserData?.id)
-                        : employees.filter(
-                            (e) => e.store === currentUserData?.store && e.id !== currentUserData?.id
-                          );
-
-                      if (gradeTargetEmps.length === 0)
-                        return (
-                          <p className="text-center text-gray-400 text-sm font-bold py-4">
-                            目前沒有符合的員工資料
-                          </p>
-                        );
-                      return gradeTargetEmps.map((emp) => {
-                        const isGrading = gradingEmployeeId === emp.id;
-                        const applicableItems = dailyItems.filter((item) =>
-                          (item.targetRoles || []).includes(emp.role)
-                        );
-                        const dateRecords =
-                          emp.dailyRecords?.[selectedRecordDate] || {};
-                        const sc = dateRecords.scores || dateRecords;
-                        const hasApplicable = applicableItems.length > 0;
-                        const isCompletedToday =
-                          hasApplicable &&
-                          applicableItems.every(
-                            (item) => sc[item.id] !== undefined
-                          );
-                        const needsAttention =
-                          hasApplicable && !isCompletedToday;
-
-                        return (
-                          <div
-                            key={emp.id}
-                            className={`bg-white rounded-[24px] p-5 soft-shadow transition-all ${
-                              isGrading
-                                ? 'ring-2 ring-[#D85E38]/50 border-transparent'
-                                : needsAttention
-                                ? 'border-2 border-red-400 shadow-[0_0_15px_rgba(239,68,68,0.25)]'
-                                : 'border border-gray-100'
-                            }`}
-                          >
-                            <div
-                              className="flex justify-between items-center cursor-pointer"
-                              onClick={() => {
-                                if (!isGrading) {
-                                  setGradingEmployeeId(emp.id);
-                                  setGradingScores(sc);
-                                } else {
-                                  setGradingEmployeeId(null);
-                                }
-                              }}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-[#F0F2F5] rounded-full flex items-center justify-center shrink-0 overflow-hidden">
-                                  {(emp.avatarId || emp.avatarUrl) ? (
-                                    <AvatarDisplay avatarId={emp.avatarId} avatarUrl={emp.avatarUrl} />
-                                  ) : (
-                                    <User c="w-6 h-6 text-gray-400" />
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="font-black text-[15px] text-[#1A1A1A]">
-                                    {String(emp.name)}{' '}
-                                    <span className="text-[10px] text-gray-400 font-bold ml-1 bg-gray-100 px-2 py-0.5 rounded-full">
-                                      {String(emp.store)}
-                                    </span>
-                                  </p>
-                                  <p className="text-[11px] font-bold mt-1 tracking-widest flex items-center gap-1">
-                                    <RoleBadge role={emp.role} />
-                                    {needsAttention ? (
-                                      <span className="text-red-600 bg-red-100 px-1.5 py-0.5 rounded ml-1 font-black animate-pulse">
-                                        待處理
-                                      </span>
-                                    ) : hasApplicable ? (
-                                      <span className="text-[#2F7E5B] bg-[#F1F8F5] px-1.5 py-0.5 rounded ml-1">
-                                        已完成
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded ml-1">
-                                        無項目
-                                      </span>
-                                    )}
-                                  </p>
-                                </div>
-                              </div>
-                              <div>
-                                <ChevronRight
-                                  c={`w-5 h-5 transition-transform ${
-                                    isGrading
-                                      ? 'rotate-90 text-[#D85E38]'
-                                      : needsAttention
-                                      ? 'text-red-400'
-                                      : 'text-gray-300'
-                                  }`}
-                                />
-                              </div>
-                            </div>
-
-                            {isGrading && (
-                              <div className="mt-5 pt-5 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
-                                {applicableItems.length === 0 ? (
-                                  <div className="text-center p-4 bg-gray-50 rounded-xl text-xs font-bold text-gray-400">
-                                    此職位目前無適用的平時評分項目
-                                  </div>
-                                ) : (
-                                  <div className="space-y-4">
-                                    {applicableItems.map((item) => (
-                                      <div
-                                        key={item.id}
-                                        className="flex items-center justify-between bg-[#F0F2F5] p-3 rounded-xl"
-                                      >
-                                        <span className="font-bold text-sm text-gray-700">
-                                          {String(item.title)}
-                                        </span>
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            placeholder="分數"
-                                            value={
-                                              gradingScores[item.id] !==
-                                              undefined
-                                                ? gradingScores[item.id]
-                                                : ''
-                                            }
-                                            onChange={(e) =>
-                                              setGradingScores({
-                                                ...gradingScores,
-                                                [item.id]:
-                                                  e.target.value === ''
-                                                    ? ''
-                                                    : Number(e.target.value),
-                                              })
-                                            }
-                                            className="w-16 p-2 text-center rounded-lg font-black text-[#D85E38] outline-none border border-gray-200 focus:border-[#D85E38]"
-                                          />
-                                          <span className="text-xs font-bold text-gray-400">
-                                            分
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                    <div className="flex pt-2">
-                                      <button
-                                        onClick={async () => {
-                                          const finalScores = {
-                                            ...gradingScores,
-                                          };
-                                          Object.keys(finalScores).forEach(
-                                            (k) => {
-                                              if (finalScores[k] === '')
-                                                delete finalScores[k];
-                                            }
-                                          );
-                                          const updatedRecords = {
-                                            ...(emp.dailyRecords || {}),
-                                          };
-                                          updatedRecords[selectedRecordDate] = {
-                                            scores: finalScores,
-                                            status: canEdit
-                                              ? 'approved'
-                                              : 'pending',
-                                            gradedBy: currentUserName,
-                                            timestamp: Date.now(),
-                                          };
-                                          await updateDoc(
-                                            doc(db, 'employees', emp.id),
-                                            { dailyRecords: updatedRecords }
-                                          );
-                                          showToast(
-                                            `${String(
-                                              emp.name
-                                            )} 的平時分數已送出！`
-                                          );
-                                          setGradingEmployeeId(null);
-                                        }}
-                                        className="w-full bg-[#1A1A1A] text-white py-3.5 rounded-xl text-sm font-bold shadow-lg hover:bg-black transition-colors flex items-center justify-center"
-                                      >
-                                        儲存本日評分
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                )}
-
-                {recordTab === 'mine' && (
-                  <div className="space-y-4">
-                    {(() => {
-                      const myDailyRecords =
-                        currentUserData?.dailyRecords || {};
-                      const dates = Object.keys(myDailyRecords).sort(
-                        (a, b) => new Date(b) - new Date(a)
-                      );
-
-                      if (dates.length === 0)
-                        return (
-                          <div className="bg-white rounded-[24px] p-10 soft-shadow border border-gray-100 text-center flex flex-col items-center">
-                            <CalendarIcon c="w-8 h-8 text-gray-300 mb-4" />
-                            <p className="text-gray-400 font-bold text-sm">
-                              目前尚無平時紀錄分數
-                            </p>
-                          </div>
-                        );
-
-                      return dates.map((dateStr) => {
-                        const dateData = myDailyRecords[dateStr];
-                        const scores = dateData.scores || dateData;
-                        const status = dateData.status || 'approved';
-                        const scoreKeys = Object.keys(scores);
-                        if (scoreKeys.length === 0) return null;
-                        const totalScore = scoreKeys.reduce(
-                          (acc, itemId) => acc + (Number(scores[itemId]) || 0),
-                          0
-                        );
-                        const avgScore = Math.round(
-                          totalScore / scoreKeys.length
-                        );
-
-                        return (
-                          <div
-                            key={dateStr}
-                            className="bg-white rounded-[24px] p-6 soft-shadow border border-gray-100 mb-4 animate-in slide-in-from-bottom-4"
-                          >
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
-                              <div className="flex items-center">
-                                <div className="bg-[#FCEEEA] p-2 rounded-lg mr-3">
-                                  <CalendarIcon c="w-5 h-5 text-[#D85E38]" />
-                                </div>
-                                <div>
-                                  <h3 className="font-black text-lg text-[#1A1A1A]">
-                                    {String(dateStr)}
-                                  </h3>
-                                  <span
-                                    className={`text-[9px] px-2 py-0.5 rounded-md font-bold mt-1 inline-block ${
-                                      status === 'pending'
-                                        ? 'bg-orange-100 text-orange-600'
-                                        : 'bg-[#F1F8F5] text-[#2F7E5B]'
-                                    }`}
-                                  >
-                                    {status === 'pending'
-                                      ? '主管審核中'
-                                      : '已核准'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-[10px] text-gray-400 font-bold block mb-0.5">
-                                  平均得分
-                                </span>
-                                <span className="font-black text-2xl text-[#D85E38]">
-                                  {avgScore}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              {scoreKeys.map((itemId) => {
-                                const itemInfo = dailyItems.find(
-                                  (item) => item.id === itemId
-                                );
-                                const title = itemInfo
-                                  ? itemInfo.title
-                                  : '已刪除的評分項目';
-                                const score = scores[itemId];
-                                const scoreColor =
-                                  score >= 90
-                                    ? 'text-[#2F7E5B]'
-                                    : score >= 60
-                                    ? 'text-[#D85E38]'
-                                    : 'text-red-500';
-
-                                return (
-                                  <div
-                                    key={itemId}
-                                    className="flex justify-between items-center p-3 bg-[#F0F2F5] rounded-xl"
-                                  >
-                                    <span className="font-bold text-sm text-gray-700">
-                                      {String(title)}
-                                    </span>
-                                    <span
-                                      className={`font-black text-lg ${scoreColor}`}
-                                    >
-                                      {score}{' '}
-                                      <span className="text-[10px] text-gray-400 ml-0.5">
-                                        分
-                                      </span>
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* --- 新增：事件檢討紀錄 (Incidents) --- */}
-            {activeTab === 'incidents' && (
-              <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="mb-4 px-1 mt-2">
-                  <h2 className="font-black text-[#1A1A1A] text-3xl tracking-tight">
-                    {canEdit ? '管理檢討紀錄' : '事件檢討單'}
-                    <span className="text-[#D85E38]">.</span>
-                  </h2>
-                </div>
-
-                {canEdit && (
-                  <div className="flex overflow-x-auto hide-scrollbar mt-4 pt-2 mb-4">
-                    <button
-                      onClick={() => setActiveIncidentStoreFilter('all')}
-                      className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
-                        activeIncidentStoreFilter === 'all'
-                          ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                          : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                      }`}
-                    >
-                      全部門店
-                    </button>
-                    {stores.map((store) => (
-                      <button
-                        key={`inc-store-${store.id}`}
-                        onClick={() => setActiveIncidentStoreFilter(store.name)}
-                        className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
-                          activeIncidentStoreFilter === store.name
-                            ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                            : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
-                        }`}
-                      >
-                        {String(store.name)}
-                      </button>
-                    ))}
-                    <div className="flex-1 border-b border-gray-200"></div>
-                  </div>
-                )}
-
-                {canEdit && (
-                  <div className="bg-white p-5 rounded-[28px] soft-shadow border border-gray-100 mb-6">
-                    {isAddingIncident ? (
-                      <div className="space-y-4 animate-in fade-in">
-                        <h3 className="font-bold text-[#1A1A1A] mb-2 flex items-center">
-                          <AlertTriangle c="w-4 h-4 mr-2 text-[#D85E38]" />{' '}
-                          建立新檢討單
-                        </h3>
-                        <div>
-                          <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">
-                            發生人員
-                          </label>
-                          <select
-                            value={editIncidentData.empId}
-                            onChange={(e) =>
-                              setEditIncidentData({
-                                ...editIncidentData,
-                                empId: e.target.value,
-                              })
-                            }
-                            className="w-full p-3.5 bg-[#F0F2F5] rounded-xl font-bold text-sm outline-none border-none"
-                          >
-                            <option value="">選擇員工...</option>
-                            {employees
-                              .filter(
-                                (emp) =>
-                                  activeIncidentStoreFilter === 'all' ||
-                                  emp.store === activeIncidentStoreFilter
-                              )
-                              .map((emp) => (
-                                <option key={emp.id} value={emp.id}>
-                                  {String(emp.name)} ({String(emp.store)})
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">
-                            事件標題
-                          </label>
-                          <input
-                            type="text"
-                            value={editIncidentData.title}
-                            onChange={(e) =>
-                              setEditIncidentData({
-                                ...editIncidentData,
-                                title: e.target.value,
-                              })
-                            }
-                            className="w-full p-3.5 bg-[#F0F2F5] rounded-xl font-bold text-sm outline-none border-none"
-                            placeholder="例如：遲到、服裝不整、客訴..."
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-gray-500 mb-1 block pl-1">
-                            事件描述 (選填)
-                          </label>
-                          <textarea
-                            value={editIncidentData.description}
-                            onChange={(e) =>
-                              setEditIncidentData({
-                                ...editIncidentData,
-                                description: e.target.value,
-                              })
-                            }
-                            className="w-full p-3.5 bg-[#F0F2F5] rounded-xl text-sm outline-none min-h-[80px] border-none"
-                            placeholder="輸入管理員補充的詳細狀況..."
-                          />
-                        </div>
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            onClick={() => {
-                              setIsAddingIncident(false);
-                              setEditIncidentData({
-                                empId: '',
-                                title: '',
-                                description: '',
-                              });
-                            }}
-                            className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-full font-bold text-sm"
-                          >
-                            取消
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (
-                                !editIncidentData.empId ||
-                                !editIncidentData.title.trim()
-                              ) {
-                                showToast('請選擇人員並輸入標題！');
-                                return;
-                              }
-                              const empInfo = employees.find(
-                                (e) => e.id === editIncidentData.empId
-                              );
-                              await addDoc(collection(db, 'incidents'), {
-                                empId: empInfo.id,
-                                empName: empInfo.name,
-                                store: empInfo.store,
-                                title: editIncidentData.title,
-                                description: editIncidentData.description,
-                                status: 'pending',
-                                createdAt: Date.now(),
-                              });
-                              setIsAddingIncident(false);
-                              setEditIncidentData({
-                                empId: '',
-                                title: '',
-                                description: '',
-                              });
-                              showToast('已發送檢討單！');
-                            }}
-                            className="flex-1 py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm shadow-lg"
-                          >
-                            發送
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setIsAddingIncident(true)}
-                        className="w-full py-4 bg-[#FCEEEA] rounded-full text-sm text-[#D85E38] font-bold flex justify-center items-center hover:bg-[#F9E2DB] transition-colors border-none shadow-sm"
-                      >
-                        <PlusCircle c="w-5 h-5 mr-2" /> 新增事件檢討單
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  {(() => {
-                    let displayIncidents = canEdit
-                      ? incidents
-                      : incidents.filter(
-                          (inc) => inc.empId === currentUserData?.id
-                        );
-                    if (canEdit && activeIncidentStoreFilter !== 'all')
-                      displayIncidents = displayIncidents.filter(
-                        (inc) => inc.store === activeIncidentStoreFilter
-                      );
-                    if (displayIncidents.length === 0)
-                      return (
-                        <div className="text-center py-10 bg-white rounded-[24px] text-gray-400 font-bold text-sm soft-shadow border border-gray-100">
-                          目前尚無任何檢討紀錄
-                        </div>
-                      );
-
-                    return displayIncidents.map((inc) => {
-                      if (canEdit && editingIncidentId === inc.id) {
-                        return (
-                          <div
-                            key={inc.id}
-                            className="bg-white p-5 rounded-[24px] soft-shadow border border-gray-100 space-y-4 animate-in fade-in"
-                          >
-                            <input
-                              type="text"
-                              value={editIncidentData.title}
-                              onChange={(e) =>
-                                setEditIncidentData({
-                                  ...editIncidentData,
-                                  title: e.target.value,
-                                })
-                              }
-                              className="w-full p-3.5 bg-[#F0F2F5] rounded-xl font-bold text-sm outline-none border-none"
-                              placeholder="事件標題..."
-                            />
-                            <textarea
-                              value={editIncidentData.description}
-                              onChange={(e) =>
-                                setEditIncidentData({
-                                  ...editIncidentData,
-                                  description: e.target.value,
-                                })
-                              }
-                              className="w-full p-3.5 bg-[#F0F2F5] rounded-xl text-sm outline-none min-h-[80px] border-none"
-                              placeholder="事件描述..."
-                            />
-                            <div className="flex gap-3">
-                              <button
-                                onClick={() => setEditingIncidentId(null)}
-                                className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-full font-bold text-sm"
-                              >
-                                取消
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  await updateDoc(
-                                    doc(db, 'incidents', inc.id),
-                                    {
-                                      title: editIncidentData.title,
-                                      description: editIncidentData.description,
-                                    }
-                                  );
-                                  setEditingIncidentId(null);
-                                  showToast('已儲存變更');
-                                }}
-                                className="flex-1 py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm shadow-lg"
-                              >
-                                儲存
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={inc.id}
-                          className={`p-6 rounded-[24px] soft-shadow border relative overflow-hidden transition-all ${
-                            inc.status === 'completed'
-                              ? 'bg-white border-gray-100'
-                              : 'bg-red-50/40 border-red-100'
-                          }`}
-                        >
-                          {canEdit && (
-                            <div className="absolute top-4 right-4 flex gap-1 z-10">
-                              <button
-                                onClick={() => {
-                                  setEditingIncidentId(inc.id);
-                                  setEditIncidentData({
-                                    title: inc.title,
-                                    description: inc.description || '',
-                                  });
-                                }}
-                                className="p-2 text-gray-400 hover:text-[#1A1A1A] bg-gray-50 rounded-full"
-                              >
-                                <Edit c="w-4 h-4" />
-                              </button>
-                              {deletingIncidentId === inc.id ? (
-                                <button
-                                  onClick={async () => {
-                                    await deleteDoc(
-                                      doc(db, 'incidents', inc.id)
-                                    );
-                                    setDeletingIncidentId(null);
-                                    showToast('已刪除！');
-                                  }}
-                                  className="bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold animate-in fade-in"
-                                >
-                                  確定刪除?
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setDeletingIncidentId(inc.id)}
-                                  className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-full"
-                                >
-                                  <Trash2 c="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 mb-3">
-                            {inc.status === 'completed' ? (
-                              <CheckCircle2 c="w-5 h-5 text-[#2F7E5B]" />
-                            ) : (
-                              <AlertTriangle c="w-5 h-5 text-red-500" />
-                            )}
-                            <span
-                              className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                                inc.status === 'completed'
-                                  ? 'bg-[#F1F8F5] text-[#2F7E5B]'
-                                  : 'bg-red-100 text-red-600'
-                              }`}
-                            >
-                              {inc.status === 'completed'
-                                ? '已結案'
-                                : '待員工簽核'}
-                            </span>
-                            <span className="text-[10px] text-gray-400 font-bold">
-                              {new Date(inc.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <h3 className="font-black text-lg text-[#1A1A1A] mb-1 pr-16">
-                            {String(inc.title)}
-                          </h3>
-                          {canEdit && (
-                            <p className="text-[10px] text-gray-500 font-bold mb-2">
-                              發生人員：{String(inc.empName)} (
-                              {String(inc.store)})
-                            </p>
-                          )}
-                          {inc.description && (
-                            <p className="text-sm text-gray-600 mb-4 bg-white p-3 rounded-xl border border-gray-100">
-                              {String(inc.description)}
-                            </p>
-                          )}
-
-                          {inc.status === 'completed' ? (
-                            <div className="mt-4 border-t border-gray-100 pt-4">
-                              <p className="text-xs font-bold text-gray-400 mb-2">
-                                員工檢討內容
-                              </p>
-                              <p className="text-sm text-[#1A1A1A] font-bold bg-[#F0F2F5] p-4 rounded-xl leading-relaxed whitespace-pre-wrap">
-                                {String(inc.reviewText)}
-                              </p>
-                              <div className="mt-4 flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
-                                <div className="text-[10px] text-gray-400 font-bold">
-                                  簽署時間
-                                  <br />
-                                  <span className="text-gray-600">
-                                    {new Date(inc.completedAt).toLocaleString()}
-                                  </span>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                  <span className="text-[10px] text-gray-400 font-bold mb-1">
-                                    本人親簽
-                                  </span>
-                                  <img
-                                    src={inc.signatureBase64}
-                                    alt="簽名"
-                                    className="h-12 object-contain bg-white px-2 rounded border border-gray-100"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            !canEdit && (
-                              <button
-                                onClick={() =>
-                                  setReviewModal({
-                                    show: true,
-                                    incident: inc,
-                                    text: '',
-                                  })
-                                }
-                                className="mt-4 w-full py-3.5 bg-red-500 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-red-600 transition-colors flex justify-center items-center"
-                              >
-                                <PenTool c="w-4 h-4 mr-2" /> 填寫檢討與簽名
-                              </button>
-                            )
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            )}
 
             {/* --- 個人資料 / 人員名單 --- */}
             {activeTab === 'profile' && (
@@ -6920,14 +5410,14 @@ export default function App() {
             <button
               onClick={() => setActiveTab('exams')}
               className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${
-                activeTab === 'exams' || activeTab === 'exam-grading' || activeTab === 'exam-settings'
+                activeTab === 'exams' || activeTab === 'exam-settings'
                   ? 'text-[#D85E38]'
                   : 'text-gray-400'
               }`}
             >
               <div
                 className={`p-2 rounded-full ${
-                  activeTab === 'exams' || activeTab === 'exam-grading' || activeTab === 'exam-settings'
+                  activeTab === 'exams' || activeTab === 'exam-settings'
                     ? 'bg-[#FCEEEA]'
                     : 'bg-transparent'
                 }`}
