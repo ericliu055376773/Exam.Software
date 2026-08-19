@@ -3966,8 +3966,6 @@ export default function App() {
                               </div>
                             </div>
                           );
-
-                                        return card;
                                       })}
                                       {!canEdit && !examTimeUp && showTimedSection && (() => {
                                         const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
