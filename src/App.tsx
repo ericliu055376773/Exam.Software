@@ -3390,7 +3390,7 @@ export default function App() {
                             );
                           }
 
-                          const card = (
+                          return (
                             <div
                               key={exam.id}
                               draggable={canEdit}
@@ -3570,12 +3570,10 @@ export default function App() {
                                     )}
                                   </div>
                                 ) : isFailed ? (
-                                  <div className="mt-4">
+                                  <div className="mt-2">
                                     <div className="p-3 bg-[#FFE4DE] rounded-xl text-[#D85E38] font-bold text-xs border border-[#D85E38]/20 mb-3">
                                       <XCircle c="w-4 h-4 mr-1 inline" /> 此題答錯（重考時請重新作答）
                                     </div>
-                                ) : (
-                                  <div className="mt-2">
                                     {qType === 'tf' && (
                                       <div className="flex gap-4">
                                         <button
@@ -3962,9 +3960,11 @@ export default function App() {
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                              </div>
-                            </div>); return card; })}
+                                ) : null}
+                                      </div>
+                                      </div>
+                                    );
+                                      })}
                                       {!canEdit && !examTimeUp && showTimedSection && (() => {
                                         const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
                                         const allDone = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
