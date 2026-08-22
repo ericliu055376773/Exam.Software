@@ -2818,7 +2818,11 @@ export default function App() {
                       ) : (
                         (() => {
                           const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+                          const proctorComputerTypes = ['essay'];
+                          const proctorPracticalTypes = ['oral', 'practical', 'timed_task'];
                           const timedExams = activeExams.filter((e) => !proctorTypeList.includes(e.type));
+                          const proctorComputerExams = activeExams.filter((e) => proctorComputerTypes.includes(e.type));
+                          const proctorPracticalExams = activeExams.filter((e) => proctorPracticalTypes.includes(e.type));
                           const proctorExams = activeExams.filter((e) => proctorTypeList.includes(e.type));
 
                           return (
@@ -2981,7 +2985,7 @@ export default function App() {
                                         計時題 (自動批改)
                                       </option>
                                       <option value="essay">
-                                        問答題 (考官審核)
+                                        問答題 (需考官)
                                       </option>
                                       <option value="oral">
                                         口述題 (需考官)
@@ -4047,7 +4051,7 @@ export default function App() {
                                 </div>
                               )}
 
-                              {proctorExams.length > 0 && (
+                              {proctorComputerExams.length > 0 && (
                                 <div className="rounded-[24px] overflow-hidden border border-orange-100 soft-shadow">
                                   <button
                                     onClick={() => setShowProctorSection(!showProctorSection)}
@@ -4055,11 +4059,11 @@ export default function App() {
                                   >
                                     <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
-                                        <span className="text-lg">👨‍🏫</span>
+                                        <span className="text-lg">📝</span>
                                       </div>
                                       <div className="text-left">
-                                        <h4 className="font-black text-[#D85E38] text-sm">考官測驗</h4>
-                                        <p className="text-[10px] text-[#D85E38]/60 font-bold">{proctorExams.length} 題・需考官{(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : '・不計時'}</p>
+                                        <h4 className="font-black text-[#D85E38] text-sm">考官電腦測驗</h4>
+                                        <p className="text-[10px] text-[#D85E38]/60 font-bold">{proctorComputerExams.length} 題・需考官{(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : ''}</p>
                                       </div>
                                     </div>
                                     <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showProctorSection ? 'rotate-180' : ''}`}>
@@ -4098,7 +4102,7 @@ export default function App() {
                                               )}
                                             </div>
                                           )}
-                                      {proctorExams.map((exam) => {
+                                      {proctorComputerExams.map((exam) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
                                         const empRecord = currentUserData?.examRecords?.[exam.id];
@@ -4132,7 +4136,7 @@ export default function App() {
                                                     <option value="multiSelect">複選題 (自動批改)</option>
                                                     <option value="fill">填空題 (自動批改)</option>
                                                     <option value="ordering">順序題 (自動批改)</option>
-                                                    <option value="essay">問答題 (考官審核)</option>
+                                                    <option value="essay">問答題 (需考官)</option>
                                                     <option value="oral">口述題 (需考官)</option>
                                                     <option value="practical">實作題 (需考官)</option>
                                                     <option value="timed_task">計時題 (需考官)</option>
@@ -4446,7 +4450,7 @@ export default function App() {
                                               }}
                                               className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${canSubmit ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                             >
-                                              📝 考官測驗交卷（共 {proctorExams.length} 題{!canSubmit ? '，請先完成填寫題目' : ''}）
+                                              📝 考官電腦測驗交卷（共 {proctorComputerExams.length} 題{!canSubmit ? '，請先完成填寫題目' : ''}）
                                             </button>
                                           );
                                         }
@@ -4455,6 +4459,84 @@ export default function App() {
                                       })()}
                                         </>
                                       )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {proctorPracticalExams.length > 0 && (
+                                <div className="rounded-[24px] overflow-hidden border border-purple-100 soft-shadow">
+                                  <button
+                                    onClick={() => setShowTimedSection(prev => prev === 'practical' ? false : 'practical')}
+                                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#F3E8FF] to-[#EDE9FE] hover:from-[#E9D5FF] hover:to-[#DDD6FE] transition-all"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
+                                        <span className="text-lg">👨‍🏫</span>
+                                      </div>
+                                      <div className="text-left">
+                                        <h4 className="font-black text-[#7C3AED] text-sm">考官實作測驗</h4>
+                                        <p className="text-[10px] text-[#7C3AED]/60 font-bold">{proctorPracticalExams.length} 題・現場評分・不計時</p>
+                                      </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showTimedSection === 'practical' ? 'rotate-180' : ''}`}>
+                                      <ChevronRight c="w-4 h-4 text-[#7C3AED] rotate-90" />
+                                    </div>
+                                  </button>
+                                  {showTimedSection === 'practical' && (
+                                    <div className="bg-white p-3 space-y-4">
+                                      {proctorPracticalExams.map((exam) => {
+                                        const empRecord = currentUserData?.examRecords?.[exam.id];
+                                        const isPassed = empRecord?.status === 'passed' || empRecord === 'passed';
+                                        const isFailed = empRecord?.status === 'failed' || empRecord === 'failed';
+                                        const qType = exam.type || 'basic';
+                                        const typeTags = {
+                                          oral: { label: '口述', style: 'bg-[#DCFCE7] text-[#16A34A]' },
+                                          practical: { label: '實作題', style: 'bg-[#FEE2E2] text-[#DC2626]' },
+                                          timed_task: { label: '計時題', style: 'bg-[#FEF9C3] text-[#CA8A04]' },
+                                        };
+                                        const typeInfo = typeTags[qType] || { label: qType, style: 'bg-gray-100 text-gray-600' };
+                                        return (
+                                          <div key={exam.id} className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : ''}`}>
+                                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                              <span className={`px-3 py-1 rounded-full text-[10px] font-black ${typeInfo.style}`}>{typeInfo.label}</span>
+                                              <span className="text-[10px] text-gray-400 font-bold">{exam.subtitle || ''}</span>
+                                              {isPassed && <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">✓ 通過</span>}
+                                              {isFailed && <span className="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full font-bold">✗ 未通過</span>}
+                                            </div>
+                                            <div className="bg-white p-5 rounded-[16px] shadow-sm border border-gray-50">
+                                              <h3 className="font-black text-[#1A1A1A] text-base mb-4 text-left">{exam.title}</h3>
+                                              {exam.description && <p className="text-sm text-gray-500 mb-3 text-left bg-gray-50 p-3 rounded-xl">{exam.description}</p>}
+                                              {!canEdit && !isPassed && !isFailed && (
+                                                <div className="mt-3 space-y-2">
+                                                  <div className={`p-3 rounded-xl border-2 border-dashed ${qType === 'oral' ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
+                                                    <div className="flex items-center gap-2">
+                                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${qType === 'oral' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
+                                                        {qType === 'oral' ? <Mic c="w-4 h-4" /> : <MonitorPlay c="w-4 h-4" />}
+                                                      </div>
+                                                      <p className="text-xs font-bold text-gray-500">{qType === 'oral' ? '請現場向考官口頭回答' : '請現場操作完成'}</p>
+                                                    </div>
+                                                  </div>
+                                                  <button
+                                                    onClick={() => {
+                                                      if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                                                      setProctorReviewModal({ show: true, examId: exam.id, proctorName: selectedProctor, password: '', verified: false });
+                                                    }}
+                                                    className="w-full py-3 bg-[#7C3AED] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#6D28D9] active:scale-95 transition-all"
+                                                  >
+                                                    🔑 評分
+                                                  </button>
+                                                </div>
+                                              )}
+                                              {isFailed && (
+                                                <div className="mt-3 p-3 bg-red-50 rounded-xl text-red-500 text-xs font-bold">
+                                                  ✗ 未通過，需整份考官測驗重考
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   )}
                                 </div>
