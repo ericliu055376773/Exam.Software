@@ -3964,10 +3964,7 @@ export default function App() {
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                            );
-                            return card;
-                                      })}
+                            </div>); return card; })}
                                       {!canEdit && !examTimeUp && showTimedSection && (() => {
                                         const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
                                         const allDone = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
