@@ -3964,7 +3964,64 @@ export default function App() {
                                       </div>
                                     )}
                                   </div>
-                                ) : null}
+                                ) : (
+                                  <div className="mt-2">
+                                    {qType === 'tf' && (
+                                      <div className="flex gap-4">
+                                        <button onClick={() => handleAnswerChange(exam.id, 'O')} className={`flex-1 py-4 border-2 rounded-xl flex justify-center items-center transition-all ${currentAnswers[exam.id] === 'O' ? 'border-[#2F7E5B] bg-[#F1F8F5] text-[#2F7E5B]' : 'border-gray-100 bg-white text-gray-400 hover:border-[#2F7E5B]/30'}`}>
+                                          <span className={`text-3xl ${currentAnswers[exam.id] === 'O' ? 'text-[#2F7E5B]' : 'text-gray-300'}`}>○</span>
+                                        </button>
+                                        <button onClick={() => handleAnswerChange(exam.id, 'X')} className={`flex-1 py-4 border-2 rounded-xl flex justify-center items-center transition-all ${currentAnswers[exam.id] === 'X' ? 'border-[#D85E38] bg-[#FCEEEA] text-[#D85E38]' : 'border-gray-100 bg-white text-gray-400 hover:border-[#D85E38]/30'}`}>
+                                          <span className={`text-3xl ${currentAnswers[exam.id] === 'X' ? 'text-[#D85E38]' : 'text-gray-300'}`}>✕</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                    {qType === 'mc' && (
+                                      <div className="flex flex-col gap-3">
+                                        {['A', 'B', 'C', 'D'].map((letter, idx) => (
+                                          <button key={letter} onClick={() => handleAnswerChange(exam.id, letter)} className={`flex items-center p-3.5 border-2 rounded-xl text-left transition-all ${currentAnswers[exam.id] === letter ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-100 bg-white hover:border-purple-200 text-gray-600'}`}>
+                                            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs mr-3 ${currentAnswers[exam.id] === letter ? 'bg-purple-200 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>{letter}</span>
+                                            <span className="font-bold text-sm">{exam.options?.[idx] || ''}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {qType === 'multiSelect' && (
+                                      <div className="flex flex-col gap-3">
+                                        {['A', 'B', 'C', 'D'].map((letter, idx) => {
+                                          if (!exam.options?.[idx]) return null;
+                                          let selected = []; try { selected = typeof currentAnswers[exam.id] === 'string' ? JSON.parse(currentAnswers[exam.id]) : (currentAnswers[exam.id] || []); } catch { selected = []; }
+                                          if (!Array.isArray(selected)) selected = [];
+                                          const isSelected = selected.includes(letter);
+                                          return (
+                                            <button key={letter} onClick={() => { let ns; if (isSelected) ns = selected.filter(x => x !== letter); else ns = [...selected, letter].sort(); handleAnswerChange(exam.id, JSON.stringify(ns)); }} className={`flex items-center p-3.5 border-2 rounded-xl text-left transition-all ${isSelected ? 'border-[#7C3AED] bg-[#F0E6FF] text-[#7C3AED]' : 'border-gray-100 bg-white text-gray-600'}`}>
+                                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs mr-3 border-2 ${isSelected ? 'bg-[#7C3AED] text-white border-[#7C3AED]' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{isSelected ? '✓' : letter}</span>
+                                              <span className="font-bold text-sm">{exam.options?.[idx] || ''}</span>
+                                            </button>
+                                          );
+                                        })}
+                                        <div className="w-full bg-[#F0E6FF] text-[#7C3AED] px-4 py-2.5 rounded-xl text-xs font-bold text-center">⚡ 此題可選擇多個答案</div>
+                                      </div>
+                                    )}
+                                    {qType === 'fill' && (
+                                      <textarea value={currentAnswers[exam.id] || ''} onChange={(e) => handleAnswerChange(exam.id, e.target.value)} className="w-full p-3 bg-[#F7F8FA] border border-gray-200 rounded-xl text-sm outline-none min-h-[60px] resize-none" placeholder="請在此輸入您的答案..." />
+                                    )}
+                                    {qType === 'ordering' && (
+                                      <div className="space-y-3">
+                                        {(() => {
+                                          let correctItems = []; try { correctItems = typeof exam.correctAnswer === 'string' ? JSON.parse(exam.correctAnswer) : (exam.correctAnswer || []); } catch { correctItems = []; }
+                                          let userOrder = []; try { userOrder = typeof currentAnswers[exam.id] === 'string' ? JSON.parse(currentAnswers[exam.id]) : (currentAnswers[exam.id] || []); } catch { userOrder = []; }
+                                          if (!Array.isArray(userOrder)) userOrder = [];
+                                          const remaining = correctItems.filter(item => !userOrder.includes(item));
+                                          return (<>
+                                            <div><label className="text-[11px] font-bold text-[#0891B2] block mb-2">排列區（點擊可移除）</label><div className="space-y-2 min-h-[48px]">{userOrder.length === 0 && <p className="text-gray-300 text-xs p-3 border-2 border-dashed rounded-xl text-center">點擊下方選項加入排列</p>}{userOrder.map((item, idx) => (<div key={`p-${idx}`} onClick={() => { const n = userOrder.filter((_, i2) => i2 !== idx); handleAnswerChange(exam.id, JSON.stringify(n)); }} className="flex items-center p-3 bg-[#CFFAFE] border-2 border-[#0891B2]/30 rounded-xl cursor-pointer"><span className="w-7 h-7 rounded-full bg-[#0891B2] text-white flex items-center justify-center font-black text-xs mr-3">{idx + 1}</span><span className="font-bold text-sm text-[#0891B2]">{item}</span></div>))}</div></div>
+                                            <div><label className="text-[11px] font-bold text-gray-400 block mb-2">選項（點擊加入排列）</label><div className="flex flex-wrap gap-2">{remaining.map((item, idx) => (<button key={`r-${idx}`} onClick={() => { const n = [...userOrder, item]; handleAnswerChange(exam.id, JSON.stringify(n)); }} className="px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-600">{item}</button>))}</div></div>
+                                          </>);
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                                       </div>
                                       </div>
                                     );
