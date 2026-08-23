@@ -3578,6 +3578,20 @@ export default function App() {
                                     <div className="p-3 bg-[#FFE4DE] rounded-xl text-[#D85E38] font-bold text-xs border border-[#D85E38]/20 mb-3">
                                       <XCircle c="w-4 h-4 mr-1 inline" /> 此題答錯（重考時請重新作答）
                                     </div>
+                                    <div className="p-3 bg-green-50 rounded-xl border border-green-200 mb-3">
+                                      <span className="text-[10px] text-green-600 font-bold block mb-1">✅ 正確答案：</span>
+                                      <p className="text-sm font-black text-green-700">
+                                        {qType === 'mc' || qType === 'tf' ? (
+                                          `${exam.correctAnswer}${qType === 'mc' && exam.options ? `. ${exam.options[['A','B','C','D'].indexOf(exam.correctAnswer)] || ''}` : ''}`
+                                        ) : qType === 'multiSelect' ? (
+                                          (() => { try { const arr = JSON.parse(exam.correctAnswer); return arr.map(l => `${l}. ${exam.options?.[['A','B','C','D'].indexOf(l)] || ''}`).join('、'); } catch { return exam.correctAnswer; } })()
+                                        ) : qType === 'ordering' ? (
+                                          (() => { try { const arr = JSON.parse(exam.correctAnswer); return arr.map((item, idx) => `${idx+1}. ${item}`).join(' → '); } catch { return exam.correctAnswer; } })()
+                                        ) : (
+                                          String(exam.correctAnswer || '')
+                                        )}
+                                      </p>
+                                    </div>
                                     {qType === 'tf' && (
                                       <div className="flex gap-4">
                                         <button
