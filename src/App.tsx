@@ -2802,7 +2802,7 @@ export default function App() {
                               {timedExams.length > 0 && (
                                 <div className="rounded-[24px] overflow-hidden border border-blue-100 soft-shadow">
                                   <button
-                                    onClick={() => setShowTimedSection(!showTimedSection)}
+                                    onClick={() => setShowTimedSection(prev => prev === 'timed' ? false : 'timed')}
                                     className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#EBF2FF] to-[#E0E7FF] hover:from-[#DBEAFE] hover:to-[#D6DCFF] transition-all"
                                   >
                                     <div className="flex items-center gap-3">
@@ -2814,11 +2814,11 @@ export default function App() {
                                         <p className="text-[10px] text-[#3B82F6]/60 font-bold">{timedExams.length} 題・自動批改・計時</p>
                                       </div>
                                     </div>
-                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showTimedSection ? 'rotate-180' : ''}`}>
+                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showTimedSection === 'timed' ? 'rotate-180' : ''}`}>
                                       <ChevronRight c="w-4 h-4 text-[#3B82F6] rotate-90" />
                                     </div>
                                   </button>
-                                  {showTimedSection && (
+                                  {showTimedSection === 'timed' && (
                                     <div className="bg-white p-3 space-y-4">
                                       {!timedSectionStarted ? (
                                         <div className="p-4 bg-[#EBF2FF]/50 rounded-xl space-y-3">
@@ -4012,7 +4012,7 @@ export default function App() {
                                       </div>
                                     );
                                       })}
-                                      {!canEdit && !examTimeUp && showTimedSection && (() => {
+                                      {!canEdit && !examTimeUp && showTimedSection === 'timed' && (() => {
                                         const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
                                         const allDone = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
                                         if (allDone) {
