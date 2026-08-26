@@ -4592,7 +4592,6 @@ export default function App() {
                       {/* 分數區已移除，通過狀態顯示在分類標籤上 */}
                     </div>
                   </>
-                )}
                 </div>
                 )}
               </div>
