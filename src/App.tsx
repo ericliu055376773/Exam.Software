@@ -2415,48 +2415,8 @@ export default function App() {
                   )}
                 </div>
 
-                {!canEdit && (
-                  <>
-                    <div className="relative mt-4 pt-2 mb-4">
-                      <button onClick={() => { if (categoryTabsRef.current) categoryTabsRef.current.scrollBy({ left: -150, behavior: 'smooth' }); }} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center" style={{ marginLeft: '-4px' }}>
-                        <ChevronLeft c="w-4 h-4 text-gray-600" />
-                      </button>
-                      <div ref={categoryTabsRef} className="flex overflow-x-auto hide-scrollbar mx-8">
-                        {filteredCategories.map((cat) => {
-                          const catPassed = cat.progress?.isPassed;
-                          return (
-                            <button key={cat.id} onClick={() => {
-                              setActiveCategoryId(cat.id);
-                              setTimedSectionStarted(false); setProctorSectionStarted(false);
-                              setSelectedProctor(''); setShowTimedSection(false); setShowProctorSection(false);
-                              setExamStartTime(null); setExamTimeRemaining(null); setExamTimeUp(false);
-                              setProctorSectionStartTime(null); setProctorTimeRemaining(null); setProctorTimeUp(false);
-                            }} className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
-                              activeCategoryId === cat.id ? (catPassed ? 'bg-green-50 text-green-600 border-green-200 z-10 pb-4' : 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4') : (catPassed ? 'bg-green-50 text-green-500 border-transparent' : 'bg-[#F0F2F5] text-gray-400 border-transparent')
-                            }`}>
-                              {catPassed && <span className="text-sm">✅</span>}
-                              {String(cat.name)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <button onClick={() => { if (categoryTabsRef.current) categoryTabsRef.current.scrollBy({ left: 150, behavior: 'smooth' }); }} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center" style={{ marginRight: '-4px' }}>
-                        <ChevronRight c="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
-
-                    {activeCategoryData?.progress?.isPassed && (
-                      <div className="bg-white p-6 rounded-[24px] soft-shadow border border-gray-100 text-center py-8">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3"><span className="text-3xl">✅</span></div>
-                        <h4 className="font-black text-xl text-green-600 mb-1">考試通過！</h4>
-                        <p className="text-[10px] text-gray-400">全部答對即通過</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {(canEdit || !activeCategoryData?.progress?.isPassed) && (
-                  <>
+                {/* 分類 tabs + 考題列表 */}
+                <>
 
                     <div className="relative mt-4 pt-2 mb-4">
                       <button
@@ -2485,22 +2445,25 @@ export default function App() {
                               if (canEdit) handleCategoryDrop(cat.id);
                             }}
                             onClick={() => {
-                              if (cat.isUnlocked) {
+                              if (canEdit || cat.isUnlocked) {
                                 setActiveCategoryId(cat.id);
                                 setExamStarted(false);
                                 setSelectedProctor('');
                                 setExamStartTime(null);
                                 setExamTimeRemaining(null);
                                 setExamTimeUp(false);
+                                setTimedSectionStarted(false); setProctorSectionStarted(false);
+                                setShowTimedSection(false); setShowProctorSection(false);
+                                setProctorSectionStartTime(null); setProctorTimeRemaining(null); setProctorTimeUp(false);
                               }
                               else showToast('🔒 請先通過前一階段的所有測驗！');
                             }}
                             className={`px-5 py-3.5 font-bold text-[14px] whitespace-nowrap transition-all rounded-t-[16px] border border-b-0 flex items-center gap-2 relative top-[1px] ${
                               activeCategoryId === cat.id
-                                ? 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4'
-                                : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100'
+                                ? ((!canEdit && cat.progress?.isPassed) ? 'bg-green-50 text-green-600 border-green-200 z-10 pb-4' : 'bg-white text-[#5C6AC4] border-gray-200 z-10 pb-4')
+                                : ((!canEdit && cat.progress?.isPassed) ? 'bg-green-50 text-green-500 border-transparent' : 'bg-[#F0F2F5] text-gray-400 border-transparent hover:bg-gray-100')
                             } ${
-                              !cat.isUnlocked
+                              !canEdit && !cat.isUnlocked
                                 ? 'opacity-60 bg-gray-50 text-gray-300 cursor-not-allowed'
                                 : ''
                             } ${
@@ -2509,8 +2472,9 @@ export default function App() {
                                 : ''
                             }`}
                           >
+                            {!canEdit && cat.progress?.isPassed && <span className="text-sm">✅</span>}
                             {String(cat.name)}{' '}
-                            {!cat.isUnlocked && <Lock c="w-3 h-3" />}
+                            {!canEdit && !cat.isUnlocked && <Lock c="w-3 h-3" />}
                           </button>
                         ))}
                         {canEdit && (
@@ -2541,6 +2505,14 @@ export default function App() {
                         <ChevronRight c="w-4 h-4 text-gray-600" />
                       </button>
                     </div>
+
+                    {!canEdit && activeCategoryData?.progress?.isPassed && (
+                      <div className="bg-white p-6 rounded-[24px] soft-shadow border border-gray-100 text-center py-8 mb-4">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3"><span className="text-3xl">✅</span></div>
+                        <h4 className="font-black text-xl text-green-600 mb-1">考試通過！</h4>
+                        <p className="text-[10px] text-gray-400">全部答對即通過</p>
+                      </div>
+                    )}
 
                     {canEdit && isAddingCategory && (
                       <div className="mb-4 bg-white p-4 rounded-[16px] soft-shadow flex gap-2 border border-gray-100 animate-in fade-in">
@@ -2848,7 +2820,7 @@ export default function App() {
                                   </button>
                                   {showTimedSection && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!canEdit && !timedSectionStarted ? (
+                                      {!timedSectionStarted ? (
                                         <div className="p-4 bg-[#EBF2FF]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#3B82F6]">請選擇考官後開始電腦測驗</p>
                                           {(activeCategoryData?.timeLimit ?? 0) > 0 && (
@@ -2868,7 +2840,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && timedSectionStarted && (
+                                          {timedSectionStarted && (
                                             <div className="flex items-center justify-between bg-[#EBF2FF]/50 p-2.5 rounded-xl mb-2">
                                               <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
                                               <div className="flex items-center gap-2">
@@ -4143,7 +4115,7 @@ export default function App() {
                                   </button>
                                   {showProctorSection && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!canEdit && !proctorSectionStarted ? (
+                                      {!proctorSectionStarted ? (
                                         <div className="p-4 bg-[#FCEEEA]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#D85E38]">請選擇考官後開始考官測驗</p>
                                           {(activeCategoryData?.proctorTimeLimit ?? 0) > 0 && (
@@ -4163,7 +4135,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && proctorSectionStarted && (
+                                          {proctorSectionStarted && (
                                             <div className="flex items-center justify-between bg-[#FCEEEA]/50 p-2.5 rounded-xl mb-2">
                                               <span className="text-xs font-bold text-[#D85E38]">考官：{selectedProctor}</span>
                                               {proctorTimeRemaining !== null && (
