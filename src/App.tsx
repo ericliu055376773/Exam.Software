@@ -4528,6 +4528,24 @@ export default function App() {
                                   </button>
                                   {showTimedSection === 'practical' && (
                                     <div className="bg-white p-3 space-y-4">
+                                      {!selectedProctor ? (
+                                        <div className="p-4 bg-[#F3E8FF]/50 rounded-xl space-y-3">
+                                          <p className="text-xs font-bold text-[#7C3AED]">請選擇考官後開始實作測驗</p>
+                                          <div className="flex gap-2">
+                                            <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
+                                              <option value="">請選擇考官...</option>
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                                <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center justify-between bg-[#F3E8FF]/50 p-2.5 rounded-xl">
+                                          <span className="text-xs font-bold text-[#7C3AED]">考官：{selectedProctor}</span>
+                                          <button onClick={() => setSelectedProctor('')} className="text-[10px] text-gray-400 font-bold hover:text-gray-600">更換</button>
+                                        </div>
+                                      )}
                                       {proctorPracticalExams.map((exam) => {
                                         const empRecord = currentUserData?.examRecords?.[exam.id];
                                         const isPassed = empRecord?.status === 'passed' || empRecord === 'passed';
@@ -6017,3 +6035,4 @@ export default function App() {
     </div>
   );
 }
+
