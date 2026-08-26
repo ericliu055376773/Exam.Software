@@ -4546,7 +4546,7 @@ export default function App() {
                                           <button onClick={() => setSelectedProctor('')} className="text-[10px] text-gray-400 font-bold hover:text-gray-600">更換</button>
                                         </div>
                                       )}
-                                      {proctorPracticalExams.map((exam) => {
+                                      {selectedProctor && proctorPracticalExams.map((exam) => {
                                         const empRecord = currentUserData?.examRecords?.[exam.id];
                                         const isPassed = empRecord?.status === 'passed' || empRecord === 'passed';
                                         const isFailed = empRecord?.status === 'failed' || empRecord === 'failed';
@@ -6035,4 +6035,3 @@ export default function App() {
     </div>
   );
 }
-
