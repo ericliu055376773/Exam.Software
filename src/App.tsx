@@ -2866,26 +2866,16 @@ export default function App() {
                               {timedExams.length > 0 && (() => {
                                 const allTimedPassed = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'passed' || rec === 'passed'; });
                                 const anyTimedFailed = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
-                                const timedRetestRequested = (currentUserData?.categoryAttempts || {})[activeCategoryId]?.timedRetestRequested;
                                 return (
                                 <div className="rounded-[24px] overflow-hidden border border-blue-100 soft-shadow">
                                   <button
                                     onClick={() => {
                                       if (!canEdit && allTimedPassed) return;
-                                      if (!canEdit && anyTimedFailed && !timedRetestRequested) return;
-                                      const newVal = showTimedSection === 'timed' ? false : 'timed';
-                                      setShowTimedSection(newVal);
-                                      if (newVal === 'timed' && !canEdit && !timedSectionStarted) {
-                                        setTimedSectionStarted(true);
-                                        setExamStarted(true);
-                                        setExamStartTime(Date.now());
-                                        setExamTimeUp(false);
-                                        setExamTimeRemaining(null);
-                                      }
+                                      setShowTimedSection(prev => prev === 'timed' ? false : 'timed');
                                     }}
                                     className={`w-full flex items-center justify-between p-4 transition-all ${
                                       allTimedPassed ? 'bg-gradient-to-r from-green-100 to-green-50 cursor-default' :
-                                      anyTimedFailed ? 'bg-gradient-to-r from-red-50 to-orange-50' :
+                                      anyTimedFailed ? 'bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100' :
                                       'bg-gradient-to-r from-[#EBF2FF] to-[#E0E7FF] hover:from-[#DBEAFE] hover:to-[#D6DCFF]'
                                     }`}
                                   >
@@ -2896,7 +2886,7 @@ export default function App() {
                                       <div className="text-left">
                                         <h4 className={`font-black text-sm ${allTimedPassed ? 'text-green-600' : anyTimedFailed ? 'text-red-500' : 'text-[#3B82F6]'}`}>電腦測驗</h4>
                                         <p className={`text-[10px] font-bold ${allTimedPassed ? 'text-green-500' : anyTimedFailed ? 'text-red-400' : 'text-[#3B82F6]/60'}`}>
-                                          {timedExams.length} 題・{allTimedPassed ? '已通過' : anyTimedFailed ? '未通過・需重考' : `自動批改・計時`}
+                                          {timedExams.length} 題・{allTimedPassed ? '已通過' : anyTimedFailed ? '未通過・需重考' : '自動批改・計時'}
                                         </p>
                                       </div>
                                     </div>
@@ -2910,9 +2900,29 @@ export default function App() {
                                   </button>
                                   {!allTimedPassed && showTimedSection === 'timed' && (
                                     <div className="bg-white p-3 space-y-4">
+                                      {!canEdit && !timedSectionStarted ? (
+                                        <div className="p-4 bg-[#EBF2FF]/50 rounded-xl space-y-3">
+                                          <p className="text-xs font-bold text-[#3B82F6]">請選擇考官後開始電腦測驗</p>
+                                          {(activeCategoryData?.timeLimit ?? 0) > 0 && (
+                                            <p className="text-[10px] text-[#3B82F6]/70 font-bold">⏱ 限時 {activeCategoryData.timeLimit} 分鐘</p>
+                                          )}
+                                          <div className="flex gap-2">
+                                            <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
+                                              <option value="">請選擇考官...</option>
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                                <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
+                                              ))}
+                                            </select>
+                                            <button onClick={() => { if (!selectedProctor) { showToast('請先選擇考官！'); return; } setTimedSectionStarted(true); setExamStarted(true); setExamStartTime(Date.now()); setExamTimeUp(false); setExamTimeRemaining(null); }} className="bg-[#3B82F6] text-white px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap">
+                                              開始
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <>
                                           {!canEdit && timedSectionStarted && (
                                             <div className="flex items-center justify-between bg-[#EBF2FF]/50 p-2.5 rounded-xl mb-2">
-                                              <span className="text-xs font-bold text-[#3B82F6]">電腦測驗進行中</span>
+                                              <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
                                               <div className="flex items-center gap-2">
                                                 {examTimeRemaining !== null && (
                                                   <span className={`text-xs font-black px-3 py-1 rounded-full ${examTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : examTimeRemaining < 60000 ? 'bg-red-100 text-red-600' : 'bg-[#EBF2FF] text-[#3B82F6]'}`}>
@@ -4187,6 +4197,8 @@ export default function App() {
                                           </button>
                                         );
                                       })()}
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
