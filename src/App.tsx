@@ -2900,7 +2900,7 @@ export default function App() {
                                   </button>
                                   {!allTimedPassed && showTimedSection === 'timed' && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!canEdit && !timedSectionStarted ? (
+                                      {!canEdit && !timedSectionStarted && !anyTimedFailed ? (
                                         <div className="p-4 bg-[#EBF2FF]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#3B82F6]">請選擇考官後開始電腦測驗</p>
                                           {(activeCategoryData?.timeLimit ?? 0) > 0 && (
@@ -2920,7 +2920,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && timedSectionStarted && (
+                                          {!canEdit && timedSectionStarted && !anyTimedFailed && (
                                             <div className="flex items-center justify-between bg-[#EBF2FF]/50 p-2.5 rounded-xl mb-2">
                                               <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
                                               <div className="flex items-center gap-2">
@@ -4097,31 +4097,34 @@ export default function App() {
                                         const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
                                         const allDone = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
                                         if (allDone) {
-                                          const anyFailed = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
-                                          if (anyFailed) {
+                                          const anyFailed2 = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
+                                          if (anyFailed2) {
                                             const catAttempts = currentUserData?.categoryAttempts || {};
                                             const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
-                                            const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
-                                            if (timedRetestRequested) {
-                                              return (
-                                                <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
-                                                  ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
-                                                </div>
-                                              );
-                                            }
                                             return (
                                               <button
                                                 onClick={async () => {
-                                                  const catAttempts2 = currentUserData?.categoryAttempts || {};
-                                                  const catData = catAttempts2[activeCategoryId] || {};
-                                                  catData.timedRetestRequested = true;
-                                                  catAttempts2[activeCategoryId] = catData;
-                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: catAttempts2 });
-                                                  showToast('已申請電腦測驗重考，請等待主管核准！');
+                                                  const newRecords = { ...currentUserData.examRecords };
+                                                  for (const exam of timedExams) {
+                                                    delete newRecords[exam.id];
+                                                  }
+                                                  const ca = currentUserData?.categoryAttempts || {};
+                                                  const cd = ca[activeCategoryId] || {};
+                                                  cd.timed = (cd.timed || 0);
+                                                  ca[activeCategoryId] = cd;
+                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca });
+                                                  setShowTimedSection(false);
+                                                  setTimedSectionStarted(false);
+                                                  setExamStarted(false);
+                                                  setExamStartTime(null);
+                                                  setExamTimeRemaining(null);
+                                                  setExamTimeUp(false);
+                                                  setCurrentAnswers({});
+                                                  showToast('已重置電腦測驗，請重新選擇考官開始測驗！');
                                                 }}
-                                                className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
+                                                className="w-full mt-4 py-4 bg-[#3B82F6] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#2563EB] active:scale-95"
                                               >
-                                                🔄 有題目答錯，申請重新測驗（已考 {timedAttemptCount} 次）
+                                                🔄 重新測驗（已考 {timedAttemptCount} 次）
                                               </button>
                                             );
                                           }
@@ -4169,31 +4172,28 @@ export default function App() {
                                         );
                                       })()}
                                       {!canEdit && examTimeUp && (() => {
-                                        const anyFailed = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
-                                        if (!anyFailed) return null;
+                                        const anyFailed3 = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
+                                        if (!anyFailed3) return null;
                                         const catAttempts = currentUserData?.categoryAttempts || {};
                                         const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
-                                        const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
-                                        if (timedRetestRequested) {
-                                          return (
-                                            <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
-                                              ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
-                                            </div>
-                                          );
-                                        }
                                         return (
                                           <button
                                             onClick={async () => {
-                                              const ca2 = currentUserData?.categoryAttempts || {};
-                                              const cd2 = ca2[activeCategoryId] || {};
-                                              cd2.timedRetestRequested = true;
-                                              ca2[activeCategoryId] = cd2;
-                                              await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca2 });
-                                              showToast('已申請電腦測驗重考，請等待主管核准！');
+                                              const newRecords = { ...currentUserData.examRecords };
+                                              for (const exam of timedExams) { delete newRecords[exam.id]; }
+                                              await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                                              setShowTimedSection(false);
+                                              setTimedSectionStarted(false);
+                                              setExamStarted(false);
+                                              setExamStartTime(null);
+                                              setExamTimeRemaining(null);
+                                              setExamTimeUp(false);
+                                              setCurrentAnswers({});
+                                              showToast('已重置電腦測驗，請重新選擇考官開始測驗！');
                                             }}
-                                            className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
+                                            className="w-full mt-4 py-4 bg-[#3B82F6] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#2563EB] active:scale-95"
                                           >
-                                            🔄 時間到未通過，申請重新測驗（已考 {timedAttemptCount} 次）
+                                            🔄 重新測驗（已考 {timedAttemptCount} 次）
                                           </button>
                                         );
                                       })()}
