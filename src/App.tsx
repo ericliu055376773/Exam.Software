@@ -751,6 +751,7 @@ export default function App() {
   const [examMode, setExamMode] = useState(null);
   const [timedSectionStarted, setTimedSectionStarted] = useState(false);
   const [proctorSectionStarted, setProctorSectionStarted] = useState(false);
+  const [proctorSectionVerified, setProctorSectionVerified] = useState(false);
   const [proctorSectionStartTime, setProctorSectionStartTime] = useState(null);
   const [proctorTimeRemaining, setProctorTimeRemaining] = useState(null);
   const [proctorTimeUp, setProctorTimeUp] = useState(false); // null | 'newcomer' | 'veteran'
@@ -2453,7 +2454,7 @@ export default function App() {
                                 setExamStartTime(null);
                                 setExamTimeRemaining(null);
                                 setExamTimeUp(false);
-                                setTimedSectionStarted(false); setProctorSectionStarted(false);
+                                setTimedSectionStarted(false); setProctorSectionStarted(false); setProctorSectionVerified(false);
                                 setShowTimedSection(false); setShowProctorSection(false);
                                 setProctorSectionStartTime(null); setProctorTimeRemaining(null); setProctorTimeUp(false);
                               }
@@ -2830,7 +2831,7 @@ export default function App() {
                                           <div className="flex gap-2">
                                             <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
                                               <option value="">請選擇考官...</option>
-                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                              {employees.filter((e) => (canEdit || e.store === currentUserData?.store) && e.id !== currentUserData?.id).map((e) => (
                                                 <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                                               ))}
                                             </select>
@@ -4126,7 +4127,7 @@ export default function App() {
                                           <div className="flex gap-2">
                                             <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
                                               <option value="">請選擇考官...</option>
-                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                              {employees.filter((e) => (canEdit || e.store === currentUserData?.store) && e.id !== currentUserData?.id).map((e) => (
                                                 <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                                               ))}
                                             </select>
@@ -4147,7 +4148,7 @@ export default function App() {
                                               )}
                                             </div>
                                           )}
-                                      {proctorComputerExams.map((exam) => {
+                                      {proctorComputerExams.map((exam, idx) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
                                         const empRecord = currentUserData?.examRecords?.[exam.id];
@@ -4317,22 +4318,55 @@ export default function App() {
                                               <h3 className="text-lg font-black text-[#1A1A1A] mb-3">{exam.title}</h3>
                                               {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl">{exam.description}</p>}
 
-                                              {!canEdit && isPendingProctor && (
+                                              {!canEdit && isPendingProctor && !proctorSectionVerified && (
                                                 <div className="mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
-                                                  <p className="text-xs text-orange-600 font-bold mb-2">等待考官審核中...</p>
-                                                  {isRetestRequested ? (
-                                                    <p className="text-[10px] text-orange-400">已送出重新測驗申請...請等待主管審核</p>
-                                                  ) : (
-                                                    <button
-                                                      onClick={() => {
-                                                        if (!selectedProctor) { showToast('請先選擇考官！'); return; }
-                                                        setProctorReviewModal({ show: true, examId: exam.id, proctorName: selectedProctor, password: '', verified: false, reviewResults: {} });
-                                                      }}
-                                                      className="bg-orange-500 text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-orange-600 transition-colors"
-                                                    >
-                                                      考官評閱
-                                                    </button>
+                                                  <p className="text-xs text-orange-600 font-bold">等待考官審核中...</p>
+                                                </div>
+                                              )}
+
+                                              {isPendingProctor && proctorSectionVerified && (
+                                                <div className="mt-3 space-y-3">
+                                                  {empRecord?.userAnswer && (
+                                                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                                      <span className="text-[10px] text-blue-500 font-bold">員工作答：</span>
+                                                      <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap mt-1">{empRecord.userAnswer}</p>
+                                                    </div>
                                                   )}
+                                                  <div className="p-3 bg-green-50 rounded-xl border border-green-200">
+                                                    <span className="text-[10px] text-green-600 font-bold">正確解答：</span>
+                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{exam.correctAnswer || '未設定'}</p>
+                                                  </div>
+                                                  <div className="flex gap-2">
+                                                    <button
+                                                      onClick={async () => {
+                                                        const newRecords = { ...currentUserData.examRecords };
+                                                        newRecords[exam.id] = { ...newRecords[exam.id], status: 'passed', approver: selectedProctor, timestamp: Date.now() };
+                                                        await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                                                        showToast('✅ 第 ' + (idx + 1) + ' 題通過！');
+                                                      }}
+                                                      className="flex-1 py-3 bg-[#2F7E5B] text-white rounded-xl font-bold text-sm shadow-sm"
+                                                    >
+                                                      ✅ 通過
+                                                    </button>
+                                                    <button
+                                                      onClick={async () => {
+                                                        // 一題不通過 → 全部考官電腦測驗題目標記失敗
+                                                        const newRecords = { ...currentUserData.examRecords };
+                                                        const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+                                                        const allProctorExams = activeExams.filter((ex) => proctorTypeList.includes(ex.type));
+                                                        for (const ex of allProctorExams) {
+                                                          const pm = newRecords[ex.id]?.mistakes || 0;
+                                                          newRecords[ex.id] = { ...(typeof newRecords[ex.id] === 'object' ? newRecords[ex.id] : {}), status: 'failed', approver: selectedProctor, timestamp: Date.now(), title: ex.title, mistakes: pm + 1, pointValue: ex.pointValue ?? 10 };
+                                                        }
+                                                        await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                                                        showToast('❌ 第 ' + (idx + 1) + ' 題未通過，考官測驗需整份重考');
+                                                        setProctorSectionVerified(false);
+                                                      }}
+                                                      className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold text-sm shadow-sm"
+                                                    >
+                                                      ❌ 不通過
+                                                    </button>
+                                                  </div>
                                                 </div>
                                               )}
 
@@ -4426,22 +4460,48 @@ export default function App() {
                                         const proctorAttempts = cd.proctor || 0;
                                         const proctorRetestRequested = cd.proctorRetestRequested;
 
-                                        // 全部待審核 - 顯示等待考官
+                                        // 有待審核 - 顯示考官密碼輸入
                                         if (anyPending) {
                                           return (
                                             <div className="mt-4 space-y-3">
-                                              <div className="w-full py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
-                                                ⏳ 已交卷，等待考官輸入密碼評閱中...
-                                              </div>
-                                              <button
-                                                onClick={() => {
-                                                  if (!selectedProctor) { showToast('請先選擇考官！'); return; }
-                                                  setProctorReviewModal({ show: true, examId: proctorExams[0]?.id, proctorName: selectedProctor, password: '', verified: false, reviewResults: {} });
-                                                }}
-                                                className="w-full py-4 bg-[#D85E38] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#C25330] active:scale-95 transition-all"
-                                              >
-                                                🔑 考官輸入密碼評閱
-                                              </button>
+                                              {proctorSectionVerified ? (
+                                                <div className="w-full py-4 bg-green-100 text-green-600 rounded-xl font-bold text-sm text-center">
+                                                  ✅ 考官已驗證，請逐題評閱上方考題
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <div className="w-full py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                                    ⏳ 已交卷，等待考官輸入密碼評閱中...
+                                                  </div>
+                                                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                                                    <p className="text-xs font-bold text-gray-500 text-center">🔑 考官請輸入密碼</p>
+                                                    <input
+                                                      type="password"
+                                                      value={proctorReviewModal.password}
+                                                      onChange={(e) => setProctorReviewModal({ ...proctorReviewModal, password: e.target.value })}
+                                                      className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-[#D85E38]"
+                                                      placeholder="輸入考官密碼..."
+                                                    />
+                                                    <button
+                                                      onClick={() => {
+                                                        if (!selectedProctor) { showToast('請先選擇考官！'); return; }
+                                                        const proctorEmp = employees.find((emp) => emp.name === selectedProctor);
+                                                        if (proctorEmp && proctorEmp.password === proctorReviewModal.password) {
+                                                          setProctorSectionVerified(true);
+                                                          setProctorReviewModal({ ...proctorReviewModal, password: '' });
+                                                          showToast('✅ 密碼正確！請逐題評閱');
+                                                        } else {
+                                                          showToast('❌ 密碼錯誤！');
+                                                          setProctorReviewModal({ ...proctorReviewModal, password: '' });
+                                                        }
+                                                      }}
+                                                      className="w-full py-3.5 bg-[#D85E38] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#C25330] active:scale-95 transition-all"
+                                                    >
+                                                      🔑 考官輸入密碼評閱
+                                                    </button>
+                                                  </div>
+                                                </>
+                                              )}
                                             </div>
                                           );
                                         }
@@ -4535,7 +4595,7 @@ export default function App() {
                                           <div className="flex gap-2">
                                             <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
                                               <option value="">請選擇考官...</option>
-                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
+                                              {employees.filter((e) => (canEdit || e.store === currentUserData?.store) && e.id !== currentUserData?.id).map((e) => (
                                                 <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                                               ))}
                                             </select>
@@ -6064,3 +6124,4 @@ export default function App() {
     </div>
   );
 }
+
