@@ -4152,6 +4152,35 @@ export default function App() {
                                           </button>
                                         );
                                       })()}
+                                      {!canEdit && examTimeUp && (() => {
+                                        const anyFailed = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
+                                        if (!anyFailed) return null;
+                                        const catAttempts = currentUserData?.categoryAttempts || {};
+                                        const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
+                                        const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
+                                        if (timedRetestRequested) {
+                                          return (
+                                            <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                              ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
+                                            </div>
+                                          );
+                                        }
+                                        return (
+                                          <button
+                                            onClick={async () => {
+                                              const ca2 = currentUserData?.categoryAttempts || {};
+                                              const cd2 = ca2[activeCategoryId] || {};
+                                              cd2.timedRetestRequested = true;
+                                              ca2[activeCategoryId] = cd2;
+                                              await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca2 });
+                                              showToast('已申請電腦測驗重考，請等待主管核准！');
+                                            }}
+                                            className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
+                                          >
+                                            🔄 時間到未通過，申請重新測驗（已考 {timedAttemptCount} 次）
+                                          </button>
+                                        );
+                                      })()}
                                         </>
                                       )}
                                     </div>
@@ -4691,6 +4720,18 @@ export default function App() {
                                         const typeInfo = typeTags[qType] || { label: qType, style: 'bg-gray-100 text-gray-600' };
                                         return (
                                           <div key={exam.id} className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : ''}`}>
+                                            {canEdit && (
+                                              <div className="flex items-center justify-end gap-1.5 mb-2">
+                                                <button onClick={async () => { const catExams = exams.filter(e => e.categoryId === exam.categoryId); const idx = catExams.findIndex(e => e.id === exam.id); if (idx > 0) { const batch = []; const prev = catExams[idx - 1]; const curOrder = exam.order ?? idx; const prevOrder = prev.order ?? (idx - 1); await updateDoc(doc(db, 'exams', exam.id), { order: prevOrder }); await updateDoc(doc(db, 'exams', prev.id), { order: curOrder }); } }} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><ChevronRight c="w-3.5 h-3.5 -rotate-90" /></button>
+                                                <button onClick={async () => { const catExams = exams.filter(e => e.categoryId === exam.categoryId); const idx = catExams.findIndex(e => e.id === exam.id); if (idx < catExams.length - 1) { const next = catExams[idx + 1]; const curOrder = exam.order ?? idx; const nextOrder = next.order ?? (idx + 1); await updateDoc(doc(db, 'exams', exam.id), { order: nextOrder }); await updateDoc(doc(db, 'exams', next.id), { order: curOrder }); } }} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><ChevronRight c="w-3.5 h-3.5 rotate-90" /></button>
+                                                <button onClick={() => setEditingExam(exam)} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><Edit c="w-3.5 h-3.5" /></button>
+                                                {deletingExamId === exam.id ? (
+                                                  <button onClick={() => { deleteDoc(doc(db, 'exams', exam.id)); setDeletingExamId(null); }} className="text-white bg-red-500 px-2 py-1 rounded-full text-[9px] font-bold shadow-sm">確定?</button>
+                                                ) : (
+                                                  <button onClick={() => setDeletingExamId(exam.id)} className="text-gray-400 hover:text-red-500 p-1.5 bg-white rounded-full shadow-sm"><Trash2 c="w-3.5 h-3.5" /></button>
+                                                )}
+                                              </div>
+                                            )}
                                             <div className="flex items-center gap-2 mb-3 flex-wrap">
                                               <span className={`px-3 py-1 rounded-full text-[10px] font-black ${typeInfo.style}`}>{typeInfo.label}</span>
                                               <span className="text-[10px] text-gray-400 font-bold">{exam.subtitle || ''}</span>
