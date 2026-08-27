@@ -985,6 +985,40 @@ export default function App() {
     return () => clearInterval(interval);
   }, [timedSectionStarted, examStartTime, activeCategoryId, categories]);
 
+  // === 電腦測驗時間到自動交卷 ===
+  useEffect(() => {
+    if (!examTimeUp || !currentUserData || canEdit) return;
+    const activeCat = categories.find((c) => c.id === activeCategoryId);
+    const catExams = exams.filter((e) => e.categoryId === activeCategoryId || (!e.categoryId && categories[0]?.id === activeCategoryId));
+    const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+    const timedExamsForSubmit = catExams.filter((e) => !proctorTypeList.includes(e.type));
+    const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
+    let hasNewSubmit = false;
+    for (const exam of timedExamsForSubmit) {
+      if (newRecords[exam.id]?.status === 'passed' || newRecords[exam.id]?.status === 'failed') continue;
+      hasNewSubmit = true;
+      const userAnswer = currentAnswers[exam.id] || '';
+      let status = 'failed';
+      if (exam.type === 'tf' || exam.type === 'mc') {
+        if (userAnswer === exam.correctAnswer) status = 'passed';
+      } else if (exam.type === 'multiSelect') {
+        try { const u = typeof userAnswer === 'string' ? JSON.parse(userAnswer) : userAnswer; const c = typeof exam.correctAnswer === 'string' ? JSON.parse(exam.correctAnswer) : exam.correctAnswer; if (Array.isArray(u) && Array.isArray(c) && u.length === c.length && u.sort().join(',') === c.sort().join(',')) status = 'passed'; } catch {}
+      } else if (exam.type === 'ordering') {
+        try { const u = typeof userAnswer === 'string' ? JSON.parse(userAnswer) : userAnswer; const c = typeof exam.correctAnswer === 'string' ? JSON.parse(exam.correctAnswer) : exam.correctAnswer; if (Array.isArray(u) && Array.isArray(c) && u.length === c.length && u.every((v, i) => v === c[i])) status = 'passed'; } catch {}
+      } else if (exam.type === 'fill') {
+        if (userAnswer?.trim().toLowerCase() === String(exam.correctAnswer || '').trim().toLowerCase()) status = 'passed';
+      }
+      const pm = newRecords[exam.id]?.mistakes || 0;
+      const pv = exam.pointValue ?? 10;
+      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status, timestamp: Date.now(), title: exam.title, mistakes: status === 'failed' ? pm + 1 : pm, approver: selectedProctor, score: status === 'passed' ? pv : 0, pointValue: pv };
+    }
+    if (hasNewSubmit) {
+      updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+      showToast('⏰ 時間到！已自動交卷');
+      setCurrentAnswers({});
+    }
+  }, [examTimeUp]);
+
   // === 考官測驗計時器 ===
   useEffect(() => {
     if (!proctorSectionStarted || !proctorSectionStartTime) return;
@@ -1006,6 +1040,34 @@ export default function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, [proctorSectionStarted, proctorSectionStartTime, activeCategoryId, categories]);
+
+  // === 考官電腦測驗時間到自動交卷 ===
+  useEffect(() => {
+    if (!proctorTimeUp || !currentUserData || canEdit) return;
+    const catExams = exams.filter((e) => e.categoryId === activeCategoryId || (!e.categoryId && categories[0]?.id === activeCategoryId));
+    const proctorComputerTypes = ['essay'];
+    const proctorComputerExamsForSubmit = catExams.filter((e) => proctorComputerTypes.includes(e.type));
+    const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
+    let hasNewSubmit = false;
+    for (const exam of proctorComputerExamsForSubmit) {
+      if (newRecords[exam.id]?.status === 'passed' || newRecords[exam.id]?.status === 'pending_proctor') continue;
+      hasNewSubmit = true;
+      const pv = exam.pointValue ?? 10;
+      const pm = newRecords[exam.id]?.mistakes || 0;
+      const userAnswer = currentAnswers[exam.id] || newRecords[exam.id]?.userAnswer || '';
+      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: 'pending_proctor', timestamp: Date.now(), title: exam.title, mistakes: pm, approver: selectedProctor, score: 0, pointValue: pv, userAnswer };
+    }
+    if (hasNewSubmit) {
+      const ca = currentUserData?.categoryAttempts || {};
+      const cd = ca[activeCategoryId] || {};
+      cd.proctor = (cd.proctor || 0) + 1;
+      cd.lastProctorAt = Date.now();
+      ca[activeCategoryId] = cd;
+      updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca });
+      showToast('⏰ 時間到！考官測驗已自動交卷，請考官輸入密碼評閱。');
+      setCurrentAnswers({});
+    }
+  }, [proctorTimeUp]);
 
   const handleRecordsTabClick = () => {
     setActiveTab('records');
@@ -2822,7 +2884,7 @@ export default function App() {
                                   </button>
                                   {showTimedSection === 'timed' && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!timedSectionStarted ? (
+                                      {!canEdit && !timedSectionStarted ? (
                                         <div className="p-4 bg-[#EBF2FF]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#3B82F6]">請選擇考官後開始電腦測驗</p>
                                           {(activeCategoryData?.timeLimit ?? 0) > 0 && (
@@ -2831,7 +2893,7 @@ export default function App() {
                                           <div className="flex gap-2">
                                             <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
                                               <option value="">請選擇考官...</option>
-                                              {employees.filter((e) => (canEdit || e.store === currentUserData?.store) && e.id !== currentUserData?.id).map((e) => (
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
                                                 <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                                               ))}
                                             </select>
@@ -2842,7 +2904,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {timedSectionStarted && (
+                                          {!canEdit && timedSectionStarted && (
                                             <div className="flex items-center justify-between bg-[#EBF2FF]/50 p-2.5 rounded-xl mb-2">
                                               <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
                                               <div className="flex items-center gap-2">
@@ -4596,25 +4658,27 @@ export default function App() {
                                   </button>
                                   {showTimedSection === 'practical' && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!selectedProctor ? (
+                                      {!canEdit && !selectedProctor ? (
                                         <div className="p-4 bg-[#F3E8FF]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#7C3AED]">請選擇考官後開始實作測驗</p>
                                           <div className="flex gap-2">
                                             <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
                                               <option value="">請選擇考官...</option>
-                                              {employees.filter((e) => (canEdit || e.store === currentUserData?.store) && e.id !== currentUserData?.id).map((e) => (
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
                                                 <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                                               ))}
                                             </select>
                                           </div>
                                         </div>
                                       ) : (
-                                        <div className="flex items-center justify-between bg-[#F3E8FF]/50 p-2.5 rounded-xl">
-                                          <span className="text-xs font-bold text-[#7C3AED]">考官：{selectedProctor}</span>
-                                          <button onClick={() => setSelectedProctor('')} className="text-[10px] text-gray-400 font-bold hover:text-gray-600">更換</button>
-                                        </div>
-                                      )}
-                                      {selectedProctor && proctorPracticalExams.map((exam) => {
+                                        <>
+                                        {!canEdit && selectedProctor && (
+                                          <div className="flex items-center justify-between bg-[#F3E8FF]/50 p-2.5 rounded-xl">
+                                            <span className="text-xs font-bold text-[#7C3AED]">考官：{selectedProctor}</span>
+                                            <button onClick={() => setSelectedProctor('')} className="text-[10px] text-gray-400 font-bold hover:text-gray-600">更換</button>
+                                          </div>
+                                        )}
+                                      {proctorPracticalExams.map((exam) => {
                                         const empRecord = currentUserData?.examRecords?.[exam.id];
                                         const isPassed = empRecord?.status === 'passed' || empRecord === 'passed';
                                         const isFailed = empRecord?.status === 'failed' || empRecord === 'failed';
@@ -4666,6 +4730,8 @@ export default function App() {
                                           </div>
                                         );
                                       })}
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
