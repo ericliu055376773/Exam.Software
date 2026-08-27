@@ -685,6 +685,7 @@ export default function App() {
   const [showSecretModal, setShowSecretModal] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showUserNotifications, setShowUserNotifications] = useState(false);
   const [showStudentNotifications, setShowStudentNotifications] = useState(false);
   const [hasShownLoginNotice, setHasShownLoginNotice] = useState(false);
   const [isCheckingGPS, setIsCheckingGPS] = useState(false);
@@ -2490,17 +2491,17 @@ export default function App() {
                     return (
                       <div className="relative">
                         <button
-                          onClick={() => setShowNotificationModal(!showNotificationModal)}
+                          onClick={() => setShowUserNotifications(!showUserNotifications)}
                           className="bg-red-50 text-red-500 p-2.5 rounded-full shadow-sm hover:scale-105 transition-transform relative"
                         >
                           <Bell c="w-5 h-5" />
                           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center">{totalNotifs}</span>
                         </button>
-                        {showNotificationModal && (
+                        {showUserNotifications && (
                           <div className="absolute right-0 top-12 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50 space-y-3 animate-in fade-in zoom-in-95">
                             <h4 className="font-black text-sm text-gray-800 flex items-center gap-2"><Bell c="w-4 h-4 text-red-500" /> 通知</h4>
                             {failedCats.map(cat => (
-                              <div key={cat.id} onClick={() => { setActiveCategoryId(cat.id); setShowNotificationModal(false); }} className="bg-red-50 p-3 rounded-xl cursor-pointer hover:bg-red-100 transition-colors">
+                              <div key={cat.id} onClick={() => { setActiveCategoryId(cat.id); setShowUserNotifications(false); }} className="bg-red-50 p-3 rounded-xl cursor-pointer hover:bg-red-100 transition-colors">
                                 <p className="text-xs font-bold text-red-600">❌ {cat.name}</p>
                                 <p className="text-[10px] text-red-400 mt-0.5">有考題未通過，請申請重考</p>
                               </div>
