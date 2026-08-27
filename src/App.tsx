@@ -4101,30 +4101,27 @@ export default function App() {
                                           if (anyFailed2) {
                                             const catAttempts = currentUserData?.categoryAttempts || {};
                                             const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
+                                            const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
+                                            if (timedRetestRequested) {
+                                              return (
+                                                <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                                  ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
+                                                </div>
+                                              );
+                                            }
                                             return (
                                               <button
                                                 onClick={async () => {
-                                                  const newRecords = { ...currentUserData.examRecords };
-                                                  for (const exam of timedExams) {
-                                                    delete newRecords[exam.id];
-                                                  }
                                                   const ca = currentUserData?.categoryAttempts || {};
                                                   const cd = ca[activeCategoryId] || {};
-                                                  cd.timed = (cd.timed || 0);
+                                                  cd.timedRetestRequested = true;
                                                   ca[activeCategoryId] = cd;
-                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca });
-                                                  setShowTimedSection(false);
-                                                  setTimedSectionStarted(false);
-                                                  setExamStarted(false);
-                                                  setExamStartTime(null);
-                                                  setExamTimeRemaining(null);
-                                                  setExamTimeUp(false);
-                                                  setCurrentAnswers({});
-                                                  showToast('已重置電腦測驗，請重新選擇考官開始測驗！');
+                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
+                                                  showToast('已申請電腦測驗重考，請等待主管核准！');
                                                 }}
-                                                className="w-full mt-4 py-4 bg-[#3B82F6] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#2563EB] active:scale-95"
+                                                className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
                                               >
-                                                🔄 重新測驗（已考 {timedAttemptCount} 次）
+                                                🔄 申請重新測驗（已考 {timedAttemptCount} 次）
                                               </button>
                                             );
                                           }
@@ -4176,24 +4173,27 @@ export default function App() {
                                         if (!anyFailed3) return null;
                                         const catAttempts = currentUserData?.categoryAttempts || {};
                                         const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
+                                        const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
+                                        if (timedRetestRequested) {
+                                          return (
+                                            <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                              ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
+                                            </div>
+                                          );
+                                        }
                                         return (
                                           <button
                                             onClick={async () => {
-                                              const newRecords = { ...currentUserData.examRecords };
-                                              for (const exam of timedExams) { delete newRecords[exam.id]; }
-                                              await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
-                                              setShowTimedSection(false);
-                                              setTimedSectionStarted(false);
-                                              setExamStarted(false);
-                                              setExamStartTime(null);
-                                              setExamTimeRemaining(null);
-                                              setExamTimeUp(false);
-                                              setCurrentAnswers({});
-                                              showToast('已重置電腦測驗，請重新選擇考官開始測驗！');
+                                              const ca = currentUserData?.categoryAttempts || {};
+                                              const cd = ca[activeCategoryId] || {};
+                                              cd.timedRetestRequested = true;
+                                              ca[activeCategoryId] = cd;
+                                              await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
+                                              showToast('已申請電腦測驗重考，請等待主管核准！');
                                             }}
-                                            className="w-full mt-4 py-4 bg-[#3B82F6] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#2563EB] active:scale-95"
+                                            className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
                                           >
-                                            🔄 重新測驗（已考 {timedAttemptCount} 次）
+                                            🔄 申請重新測驗（已考 {timedAttemptCount} 次）
                                           </button>
                                         );
                                       })()}
