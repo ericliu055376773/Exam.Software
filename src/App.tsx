@@ -4207,26 +4207,33 @@ export default function App() {
 
                               {proctorComputerExams.length > 0 && (() => {
                                 const allProctorComputerPassed = proctorComputerExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'passed' || rec === 'passed'; });
+                                const anyProctorComputerFailed = proctorComputerExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
                                 return (
                                 <div className="rounded-[24px] overflow-hidden border border-orange-100 soft-shadow">
                                   <button
                                     onClick={() => { if (!allProctorComputerPassed) setShowProctorSection(!showProctorSection); }}
-                                    className={`w-full flex items-center justify-between p-4 transition-all ${allProctorComputerPassed ? 'bg-gradient-to-r from-green-100 to-green-50 cursor-default' : 'bg-gradient-to-r from-[#FCEEEA] to-[#FEE2E2] hover:from-[#FDDDD6] hover:to-[#FECACA]'}`}
+                                    className={`w-full flex items-center justify-between p-4 transition-all ${
+                                      allProctorComputerPassed ? 'bg-gradient-to-r from-green-100 to-green-50 cursor-default' :
+                                      anyProctorComputerFailed ? 'bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100' :
+                                      'bg-gradient-to-r from-[#FCEEEA] to-[#FEE2E2] hover:from-[#FDDDD6] hover:to-[#FECACA]'
+                                    }`}
                                   >
                                     <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
-                                        <span className="text-lg">{allProctorComputerPassed ? '✅' : '📝'}</span>
+                                        <span className="text-lg">{allProctorComputerPassed ? '✅' : anyProctorComputerFailed ? '❌' : '📝'}</span>
                                       </div>
                                       <div className="text-left">
-                                        <h4 className={`font-black text-sm ${allProctorComputerPassed ? 'text-green-600' : 'text-[#D85E38]'}`}>考官電腦測驗</h4>
-                                        <p className={`text-[10px] font-bold ${allProctorComputerPassed ? 'text-green-500' : 'text-[#D85E38]/60'}`}>{proctorComputerExams.length} 題・{allProctorComputerPassed ? '已通過' : `需考官${(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : ''}`}</p>
+                                        <h4 className={`font-black text-sm ${allProctorComputerPassed ? 'text-green-600' : anyProctorComputerFailed ? 'text-red-500' : 'text-[#D85E38]'}`}>考官電腦測驗</h4>
+                                        <p className={`text-[10px] font-bold ${allProctorComputerPassed ? 'text-green-500' : anyProctorComputerFailed ? 'text-red-400' : 'text-[#D85E38]/60'}`}>
+                                          {proctorComputerExams.length} 題・{allProctorComputerPassed ? '已通過' : anyProctorComputerFailed ? '未通過・需重考' : `需考官${(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : ''}`}
+                                        </p>
                                       </div>
                                     </div>
                                     {allProctorComputerPassed ? (
                                       <span className="text-xs bg-green-200 text-green-700 px-3 py-1.5 rounded-full font-black">通過</span>
                                     ) : (
                                       <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showProctorSection ? 'rotate-180' : ''}`}>
-                                        <ChevronRight c="w-4 h-4 text-[#D85E38] rotate-90" />
+                                        <ChevronRight c={`w-4 h-4 rotate-90 ${anyProctorComputerFailed ? 'text-red-400' : 'text-[#D85E38]'}`} />
                                       </div>
                                     )}
                                   </button>
