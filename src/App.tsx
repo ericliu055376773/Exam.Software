@@ -4397,6 +4397,18 @@ export default function App() {
                                                 >
                                                   <Edit c="w-3.5 h-3.5" />
                                                 </button>
+                                                <select
+                                                  value=""
+                                                  onChange={async (e) => { if (e.target.value) { await updateDoc(doc(db, 'exams', exam.id), { categoryId: e.target.value }); showToast('考題已移動！'); } }}
+                                                  className="w-8 h-8 bg-white rounded-full shadow-sm text-gray-400 hover:text-[#5C6AC4] cursor-pointer appearance-none text-center text-xs p-0 border-none outline-none"
+                                                  title="移動至其他分類"
+                                                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpath d='M5 9l4-4 4 4M5 15l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }}
+                                                >
+                                                  <option value="">移動</option>
+                                                  {categories.filter(c => c.id !== activeCategoryId).map((cat) => (
+                                                    <option key={cat.id} value={cat.id}>→ {cat.name}</option>
+                                                  ))}
+                                                </select>
                                                 {deletingExamId === exam.id ? (
                                                   <button onClick={() => { deleteDoc(doc(db, 'exams', exam.id)); setDeletingExamId(null); }} className="text-white bg-red-500 px-2 py-1 rounded-full text-[9px] font-bold shadow-sm">確定?</button>
                                                 ) : (
@@ -4718,13 +4730,94 @@ export default function App() {
                                           timed_task: { label: '計時題', style: 'bg-[#FEF9C3] text-[#CA8A04]' },
                                         };
                                         const typeInfo = typeTags[qType] || { label: qType, style: 'bg-gray-100 text-gray-600' };
+
+                                        if (canEdit && editingExamId === exam.id) {
+                                          return (
+                                            <div key={exam.id} className="bg-white p-6 rounded-[28px] soft-shadow border-2 border-[#7C3AED]/20 animate-in fade-in">
+                                              <h4 className="font-black text-base mb-4 flex items-center">
+                                                <Edit c="w-5 h-5 mr-2 text-[#7C3AED]" /> 編輯考題
+                                              </h4>
+                                              <div className="space-y-3">
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">題型</label>
+                                                  <select value={editExamData.type} onChange={(e) => setEditExamData({ ...editExamData, type: e.target.value })} className="w-full p-3 bg-[#F0F2F5] rounded-xl text-sm font-bold outline-none">
+                                                    <option value="tf">是非題 (自動批改)</option>
+                                                    <option value="mc">選擇題 (自動批改)</option>
+                                                    <option value="multiSelect">複選題 (自動批改)</option>
+                                                    <option value="fill">填空題 (自動批改)</option>
+                                                    <option value="ordering">順序題 (自動批改)</option>
+                                                    <option value="essay">問答題 (需考官)</option>
+                                                    <option value="oral">口述題 (需考官)</option>
+                                                    <option value="practical">實作題 (需考官)</option>
+                                                    <option value="timed_task">計時題 (需考官)</option>
+                                                    <option value="basic">一般文字任務</option>
+                                                  </select>
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">題目名稱</label>
+                                                  <textarea value={editExamData.title} onChange={(e) => setEditExamData({ ...editExamData, title: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none min-h-[50px] resize-none" placeholder="輸入題目..." />
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">輔助說明文字</label>
+                                                  <input type="text" value={editExamData.subtitle} onChange={(e) => setEditExamData({ ...editExamData, subtitle: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none" placeholder="顯示在題型標籤旁邊的說明文字" />
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 mb-1 block">情境提示（選填）</label>
+                                                  <textarea value={editExamData.description} onChange={(e) => setEditExamData({ ...editExamData, description: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none min-h-[50px] resize-none" placeholder="輔助說明或情境提示..." />
+                                                </div>
+                                                {['fill', 'essay', 'oral'].includes(editExamData.type) && (
+                                                  <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 mb-1 block">標準答案（考官密碼後顯示）</label>
+                                                    <textarea value={editExamData.correctAnswer} onChange={(e) => setEditExamData({ ...editExamData, correctAnswer: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none min-h-[80px] resize-none" placeholder="標準答案或評分要點..." />
+                                                  </div>
+                                                )}
+                                                {editExamData.type === 'practical' && (
+                                                  <p className="text-xs text-gray-400 font-bold bg-gray-50 p-3 rounded-lg">此題型由現場考官人工確認與批改</p>
+                                                )}
+                                                <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                                                  <label className="text-[10px] font-bold text-gray-400 block mb-1">移動至其他分類</label>
+                                                  <select
+                                                    value={exam.categoryId || activeCategoryId}
+                                                    onChange={async (e) => {
+                                                      await updateDoc(doc(db, 'exams', editingExamId), { categoryId: e.target.value });
+                                                      showToast('考題已移動至其他分類');
+                                                      setEditingExamId(null);
+                                                    }}
+                                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none"
+                                                  >
+                                                    {categories.map((cat) => (
+                                                      <option key={cat.id} value={cat.id}>{cat.name} {cat.id === activeCategoryId ? '（目前）' : ''}</option>
+                                                    ))}
+                                                  </select>
+                                                </div>
+                                                <div className="flex gap-2 pt-1">
+                                                  <button onClick={async () => { try { await updateDoc(doc(db, 'exams', editingExamId), { ...editExamData }); setEditingExamId(null); showToast('考題已更新'); } catch (err) { showToast('更新失敗：' + err.message); } }} className="flex-1 bg-[#1A1A1A] text-white py-3 rounded-xl font-bold text-sm">儲存</button>
+                                                  <button onClick={() => setEditingExamId(null)} className="flex-1 bg-[#F0F2F5] text-gray-500 py-3 rounded-xl font-bold text-sm">取消</button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+
                                         return (
                                           <div key={exam.id} className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : ''}`}>
                                             {canEdit && (
                                               <div className="flex items-center justify-end gap-1.5 mb-2">
                                                 <button onClick={async () => { const catExams = exams.filter(e => e.categoryId === exam.categoryId); const idx = catExams.findIndex(e => e.id === exam.id); if (idx > 0) { const batch = []; const prev = catExams[idx - 1]; const curOrder = exam.order ?? idx; const prevOrder = prev.order ?? (idx - 1); await updateDoc(doc(db, 'exams', exam.id), { order: prevOrder }); await updateDoc(doc(db, 'exams', prev.id), { order: curOrder }); } }} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><ChevronRight c="w-3.5 h-3.5 -rotate-90" /></button>
                                                 <button onClick={async () => { const catExams = exams.filter(e => e.categoryId === exam.categoryId); const idx = catExams.findIndex(e => e.id === exam.id); if (idx < catExams.length - 1) { const next = catExams[idx + 1]; const curOrder = exam.order ?? idx; const nextOrder = next.order ?? (idx + 1); await updateDoc(doc(db, 'exams', exam.id), { order: nextOrder }); await updateDoc(doc(db, 'exams', next.id), { order: curOrder }); } }} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><ChevronRight c="w-3.5 h-3.5 rotate-90" /></button>
-                                                <button onClick={() => setEditingExam(exam)} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><Edit c="w-3.5 h-3.5" /></button>
+                                                <button onClick={() => { setEditingExamId(exam.id); setEditExamData({ type: exam.type || 'basic', title: exam.title || '', subtitle: exam.subtitle || '', description: exam.description || '', options: exam.options || ['', '', '', ''], correctAnswer: exam.correctAnswer || '', pointValue: exam.pointValue ?? 10 }); }} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><Edit c="w-3.5 h-3.5" /></button>
+                                                <select
+                                                  value=""
+                                                  onChange={async (e) => { if (e.target.value) { await updateDoc(doc(db, 'exams', exam.id), { categoryId: e.target.value }); showToast('考題已移動！'); } }}
+                                                  className="w-8 h-8 bg-white rounded-full shadow-sm text-gray-400 hover:text-[#5C6AC4] cursor-pointer appearance-none text-center text-xs p-0 border-none outline-none"
+                                                  title="移動至其他分類"
+                                                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpath d='M5 9l4-4 4 4M5 15l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }}
+                                                >
+                                                  <option value="">移動</option>
+                                                  {categories.filter(c => c.id !== activeCategoryId).map((cat) => (
+                                                    <option key={cat.id} value={cat.id}>→ {cat.name}</option>
+                                                  ))}
+                                                </select>
                                                 {deletingExamId === exam.id ? (
                                                   <button onClick={() => { deleteDoc(doc(db, 'exams', exam.id)); setDeletingExamId(null); }} className="text-white bg-red-500 px-2 py-1 rounded-full text-[9px] font-bold shadow-sm">確定?</button>
                                                 ) : (
@@ -6277,3 +6370,4 @@ export default function App() {
     </div>
   );
 }
+
