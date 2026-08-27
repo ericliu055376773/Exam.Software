@@ -4124,7 +4124,7 @@ export default function App() {
                                   </button>
                                   {!allProctorComputerPassed && showProctorSection && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!proctorSectionStarted ? (
+                                      {!canEdit && !proctorSectionStarted ? (
                                         <div className="p-4 bg-[#FCEEEA]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#D85E38]">請選擇考官後開始考官測驗</p>
                                           {(activeCategoryData?.proctorTimeLimit ?? 0) > 0 && (
@@ -4133,7 +4133,7 @@ export default function App() {
                                           <div className="flex gap-2">
                                             <select value={selectedProctor} onChange={(e) => setSelectedProctor(e.target.value)} className="flex-1 bg-white p-3 rounded-xl text-sm font-bold outline-none border border-gray-200">
                                               <option value="">請選擇考官...</option>
-                                              {employees.filter((e) => (canEdit || e.store === currentUserData?.store) && e.id !== currentUserData?.id).map((e) => (
+                                              {employees.filter((e) => e.store === currentUserData?.store && e.id !== currentUserData?.id).map((e) => (
                                                 <option key={e.id} value={e.name}>{String(e.name)} ({String(e.role)})</option>
                                               ))}
                                             </select>
@@ -4144,7 +4144,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {proctorSectionStarted && (
+                                          {!canEdit && proctorSectionStarted && (
                                             <div className="flex items-center justify-between bg-[#FCEEEA]/50 p-2.5 rounded-xl mb-2">
                                               <span className="text-xs font-bold text-[#D85E38]">考官：{selectedProctor}</span>
                                               {proctorTimeRemaining !== null && (
