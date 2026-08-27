@@ -662,9 +662,6 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
                 <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, lineHeight: '1.3', whiteSpace: 'nowrap' }} className={isPassed ? 'text-gray-600' : 'text-gray-400'}>
                   {nameDisplay}
                 </span>
-                <span style={{ fontSize: compact ? 8 : 9, fontWeight: 900, lineHeight: '1.3', whiteSpace: 'nowrap' }} className={isPassed ? 'text-[#3B82F6]' : hasSomeRecord ? 'text-[#D85E38]' : 'text-gray-300'}>
-                  {hasSomeRecord ? `${catScore}分` : '–'}
-                </span>
               </div>
               {/* 連線 spacer：非最後一個才加 */}
               {index < catData.length - 1 && (
@@ -688,6 +685,7 @@ export default function App() {
   const [showSecretModal, setShowSecretModal] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showStudentNotifications, setShowStudentNotifications] = useState(false);
   const [hasShownLoginNotice, setHasShownLoginNotice] = useState(false);
   const [isCheckingGPS, setIsCheckingGPS] = useState(false);
   const [secretPwd, setSecretPwd] = useState('');
@@ -2477,6 +2475,47 @@ export default function App() {
                       <ClipboardCheck c="w-4 h-4" /> 設定管理
                     </button>
                   )}
+                  {!canEdit && (() => {
+                    const failedCats = filteredCategories.filter(cat => {
+                      const catExams = exams.filter(e => e.categoryId === cat.id);
+                      return catExams.some(e => { const r = currentUserData?.examRecords?.[e.id]; return r?.status === 'failed' || r === 'failed'; });
+                    });
+                    const pendingRetestCats = filteredCategories.filter(cat => {
+                      const ca = currentUserData?.categoryAttempts || {};
+                      const cd = ca[cat.id] || {};
+                      return cd.timedRetestRequested || cd.proctorRetestRequested;
+                    });
+                    const totalNotifs = failedCats.length + pendingRetestCats.length;
+                    if (totalNotifs === 0) return null;
+                    return (
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowNotificationModal(!showNotificationModal)}
+                          className="bg-red-50 text-red-500 p-2.5 rounded-full shadow-sm hover:scale-105 transition-transform relative"
+                        >
+                          <Bell c="w-5 h-5" />
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center">{totalNotifs}</span>
+                        </button>
+                        {showNotificationModal && (
+                          <div className="absolute right-0 top-12 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50 space-y-3 animate-in fade-in zoom-in-95">
+                            <h4 className="font-black text-sm text-gray-800 flex items-center gap-2"><Bell c="w-4 h-4 text-red-500" /> 通知</h4>
+                            {failedCats.map(cat => (
+                              <div key={cat.id} onClick={() => { setActiveCategoryId(cat.id); setShowNotificationModal(false); }} className="bg-red-50 p-3 rounded-xl cursor-pointer hover:bg-red-100 transition-colors">
+                                <p className="text-xs font-bold text-red-600">❌ {cat.name}</p>
+                                <p className="text-[10px] text-red-400 mt-0.5">有考題未通過，請申請重考</p>
+                              </div>
+                            ))}
+                            {pendingRetestCats.map(cat => (
+                              <div key={`pending-${cat.id}`} className="bg-orange-50 p-3 rounded-xl">
+                                <p className="text-xs font-bold text-orange-600">⏳ {cat.name}</p>
+                                <p className="text-[10px] text-orange-400 mt-0.5">重考申請等待主管核准中...</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 分類 tabs + 考題列表 */}
@@ -4702,26 +4741,39 @@ export default function App() {
                               );
                               })()}
 
-                              {proctorPracticalExams.length > 0 && (
+                              {proctorPracticalExams.length > 0 && (() => {
+                                const allPracticalPassed = proctorPracticalExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'passed' || rec === 'passed'; });
+                                const anyPracticalFailed = proctorPracticalExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
+                                return (
                                 <div className="rounded-[24px] overflow-hidden border border-purple-100 soft-shadow">
                                   <button
-                                    onClick={() => setShowTimedSection(prev => prev === 'practical' ? false : 'practical')}
-                                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#F3E8FF] to-[#EDE9FE] hover:from-[#E9D5FF] hover:to-[#DDD6FE] transition-all"
+                                    onClick={() => { if (!canEdit && allPracticalPassed) return; setShowTimedSection(prev => prev === 'practical' ? false : 'practical'); }}
+                                    className={`w-full flex items-center justify-between p-4 transition-all ${
+                                      allPracticalPassed ? 'bg-gradient-to-r from-green-100 to-green-50 cursor-default' :
+                                      anyPracticalFailed ? 'bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100' :
+                                      'bg-gradient-to-r from-[#F3E8FF] to-[#EDE9FE] hover:from-[#E9D5FF] hover:to-[#DDD6FE]'
+                                    }`}
                                   >
                                     <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
-                                        <span className="text-lg">👨‍🏫</span>
+                                        <span className="text-lg">{allPracticalPassed ? '✅' : anyPracticalFailed ? '❌' : '👨‍🏫'}</span>
                                       </div>
                                       <div className="text-left">
-                                        <h4 className="font-black text-[#7C3AED] text-sm">考官實作測驗</h4>
-                                        <p className="text-[10px] text-[#7C3AED]/60 font-bold">{proctorPracticalExams.length} 題・現場評分・不計時</p>
+                                        <h4 className={`font-black text-sm ${allPracticalPassed ? 'text-green-600' : anyPracticalFailed ? 'text-red-500' : 'text-[#7C3AED]'}`}>考官實作測驗</h4>
+                                        <p className={`text-[10px] font-bold ${allPracticalPassed ? 'text-green-500' : anyPracticalFailed ? 'text-red-400' : 'text-[#7C3AED]/60'}`}>
+                                          {proctorPracticalExams.length} 題・{allPracticalPassed ? '已通過' : anyPracticalFailed ? '未通過・需重考' : '現場評分・不計時'}
+                                        </p>
                                       </div>
                                     </div>
-                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showTimedSection === 'practical' ? 'rotate-180' : ''}`}>
-                                      <ChevronRight c="w-4 h-4 text-[#7C3AED] rotate-90" />
-                                    </div>
+                                    {allPracticalPassed ? (
+                                      <span className="text-xs bg-green-200 text-green-700 px-3 py-1.5 rounded-full font-black">通過</span>
+                                    ) : (
+                                      <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showTimedSection === 'practical' ? 'rotate-180' : ''}`}>
+                                        <ChevronRight c={`w-4 h-4 rotate-90 ${anyPracticalFailed ? 'text-red-400' : 'text-[#7C3AED]'}`} />
+                                      </div>
+                                    )}
                                   </button>
-                                  {showTimedSection === 'practical' && (
+                                  {!allPracticalPassed && showTimedSection === 'practical' && (
                                     <div className="bg-white p-3 space-y-4">
                                       {!canEdit && !selectedProctor ? (
                                         <div className="p-4 bg-[#F3E8FF]/50 rounded-xl space-y-3">
@@ -4893,7 +4945,8 @@ export default function App() {
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              );
+                              })()}
                             </>
                           );
                         })()
