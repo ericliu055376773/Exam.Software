@@ -4097,26 +4097,32 @@ export default function App() {
                                 </div>
                               )}
 
-                              {proctorComputerExams.length > 0 && (
+                              {proctorComputerExams.length > 0 && (() => {
+                                const allProctorComputerPassed = proctorComputerExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'passed' || rec === 'passed'; });
+                                return (
                                 <div className="rounded-[24px] overflow-hidden border border-orange-100 soft-shadow">
                                   <button
-                                    onClick={() => setShowProctorSection(!showProctorSection)}
-                                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#FCEEEA] to-[#FEE2E2] hover:from-[#FDDDD6] hover:to-[#FECACA] transition-all"
+                                    onClick={() => { if (!allProctorComputerPassed) setShowProctorSection(!showProctorSection); }}
+                                    className={`w-full flex items-center justify-between p-4 transition-all ${allProctorComputerPassed ? 'bg-gradient-to-r from-green-100 to-green-50 cursor-default' : 'bg-gradient-to-r from-[#FCEEEA] to-[#FEE2E2] hover:from-[#FDDDD6] hover:to-[#FECACA]'}`}
                                   >
                                     <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm">
-                                        <span className="text-lg">📝</span>
+                                        <span className="text-lg">{allProctorComputerPassed ? '✅' : '📝'}</span>
                                       </div>
                                       <div className="text-left">
-                                        <h4 className="font-black text-[#D85E38] text-sm">考官電腦測驗</h4>
-                                        <p className="text-[10px] text-[#D85E38]/60 font-bold">{proctorComputerExams.length} 題・需考官{(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : ''}</p>
+                                        <h4 className={`font-black text-sm ${allProctorComputerPassed ? 'text-green-600' : 'text-[#D85E38]'}`}>考官電腦測驗</h4>
+                                        <p className={`text-[10px] font-bold ${allProctorComputerPassed ? 'text-green-500' : 'text-[#D85E38]/60'}`}>{proctorComputerExams.length} 題・{allProctorComputerPassed ? '已通過' : `需考官${(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : ''}`}</p>
                                       </div>
                                     </div>
-                                    <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showProctorSection ? 'rotate-180' : ''}`}>
-                                      <ChevronRight c="w-4 h-4 text-[#D85E38] rotate-90" />
-                                    </div>
+                                    {allProctorComputerPassed ? (
+                                      <span className="text-xs bg-green-200 text-green-700 px-3 py-1.5 rounded-full font-black">通過</span>
+                                    ) : (
+                                      <div className={`w-8 h-8 rounded-full bg-white/60 flex items-center justify-center transition-transform duration-300 ${showProctorSection ? 'rotate-180' : ''}`}>
+                                        <ChevronRight c="w-4 h-4 text-[#D85E38] rotate-90" />
+                                      </div>
+                                    )}
                                   </button>
-                                  {showProctorSection && (
+                                  {!allProctorComputerPassed && showProctorSection && (
                                     <div className="bg-white p-3 space-y-4">
                                       {!proctorSectionStarted ? (
                                         <div className="p-4 bg-[#FCEEEA]/50 rounded-xl space-y-3">
@@ -4452,9 +4458,9 @@ export default function App() {
                                         return card;
                                       })}
                                       {!canEdit && showProctorSection && (() => {
-                                        const allDone = proctorExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor'))); });
-                                        const anyPending = proctorExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'pending_proctor'; });
-                                        const anyFailed = proctorExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
+                                        const allDone = proctorComputerExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor'))); });
+                                        const anyPending = proctorComputerExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'pending_proctor'; });
+                                        const anyFailed = proctorComputerExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
                                         const ca = currentUserData?.categoryAttempts || {};
                                         const cd = ca[activeCategoryId] || {};
                                         const proctorAttempts = cd.proctor || 0;
@@ -4534,7 +4540,7 @@ export default function App() {
                                               onClick={async () => {
                                                 if (!selectedProctor) { showToast('請先選擇考官！'); return; }
                                                 const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
-                                                for (const exam of proctorExams) {
+                                                for (const exam of proctorComputerExams) {
                                                   const pv = exam.pointValue ?? 10;
                                                   const pm = newRecords[exam.id]?.mistakes || 0;
                                                   let userAnswer = currentAnswers[exam.id] || newRecords[exam.id]?.userAnswer || '';
@@ -4566,7 +4572,8 @@ export default function App() {
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              );
+                              })()}
 
                               {proctorPracticalExams.length > 0 && (
                                 <div className="rounded-[24px] overflow-hidden border border-purple-100 soft-shadow">
@@ -4771,20 +4778,59 @@ export default function App() {
                           const hasRecords = catExams.some(e => emp.examRecords?.[e.id]);
                           if (!hasRecords) return null;
                           const allPassed = catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                          const proctorComputerTypes = ['essay'];
+                          const proctorPracticalTypes = ['oral', 'practical', 'timed_task'];
+                          const catProctorComputer = catExams.filter(e => proctorComputerTypes.includes(e.type));
+                          const catProctorPractical = catExams.filter(e => proctorPracticalTypes.includes(e.type));
+                          const hasProctorComputerRecords = catProctorComputer.some(e => emp.examRecords?.[e.id]?.status === 'passed');
+                          const hasProctorPracticalRecords = catProctorPractical.some(e => emp.examRecords?.[e.id]?.status === 'passed');
                           return (
-                            <button
-                              key={cat.id}
-                              onClick={async () => {
-                                if (!confirm(`確定要重置 ${emp.name} 的「${cat.name}」所有考試紀錄嗎？`)) return;
-                                const newRecords = { ...emp.examRecords };
-                                catExams.forEach(e => { delete newRecords[e.id]; });
-                                await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords });
-                                showToast(`已重置 ${emp.name}「${cat.name}」的考試紀錄`);
-                              }}
-                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${allPassed ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-500' : 'bg-orange-100 text-orange-500 hover:bg-red-100 hover:text-red-500'}`}
-                            >
-                              {allPassed ? '✅' : '⏳'} {cat.name}
-                            </button>
+                            <div key={cat.id} className="flex flex-wrap gap-1">
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`確定要重置 ${emp.name} 的「${cat.name}」所有考試紀錄嗎？`)) return;
+                                  const newRecords = { ...emp.examRecords };
+                                  catExams.forEach(e => { delete newRecords[e.id]; });
+                                  const ca = emp.categoryAttempts || {};
+                                  if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; }
+                                  await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
+                                  showToast(`已重置 ${emp.name}「${cat.name}」的考試紀錄`);
+                                }}
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${allPassed ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-500' : 'bg-orange-100 text-orange-500 hover:bg-red-100 hover:text-red-500'}`}
+                              >
+                                {allPassed ? '✅' : '⏳'} {cat.name}（全部）
+                              </button>
+                              {hasProctorComputerRecords && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`確定要重置 ${emp.name} 的「${cat.name} - 考官電腦測驗」紀錄嗎？`)) return;
+                                    const newRecords = { ...emp.examRecords };
+                                    catProctorComputer.forEach(e => { delete newRecords[e.id]; });
+                                    const ca = emp.categoryAttempts || {};
+                                    if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; }
+                                    await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
+                                    showToast(`已重置 ${emp.name}「${cat.name} - 考官電腦測驗」`);
+                                  }}
+                                  className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-500 hover:bg-red-100 hover:text-red-500 transition-colors"
+                                >
+                                  📝 電腦測驗
+                                </button>
+                              )}
+                              {hasProctorPracticalRecords && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`確定要重置 ${emp.name} 的「${cat.name} - 考官實作測驗」紀錄嗎？`)) return;
+                                    const newRecords = { ...emp.examRecords };
+                                    catProctorPractical.forEach(e => { delete newRecords[e.id]; });
+                                    await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords });
+                                    showToast(`已重置 ${emp.name}「${cat.name} - 考官實作測驗」`);
+                                  }}
+                                  className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-500 hover:bg-red-100 hover:text-red-500 transition-colors"
+                                >
+                                  🎯 實作測驗
+                                </button>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
