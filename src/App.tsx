@@ -4352,9 +4352,9 @@ export default function App() {
                                                       onClick={async () => {
                                                         // 一題不通過 → 全部考官電腦測驗題目標記失敗
                                                         const newRecords = { ...currentUserData.examRecords };
-                                                        const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
-                                                        const allProctorExams = activeExams.filter((ex) => proctorTypeList.includes(ex.type));
-                                                        for (const ex of allProctorExams) {
+                                                        const proctorComputerTypes = ['essay'];
+                                                        const allProctorComputerExams = activeExams.filter((ex) => proctorComputerTypes.includes(ex.type));
+                                                        for (const ex of allProctorComputerExams) {
                                                           const pm = newRecords[ex.id]?.mistakes || 0;
                                                           newRecords[ex.id] = { ...(typeof newRecords[ex.id] === 'object' ? newRecords[ex.id] : {}), status: 'failed', approver: selectedProctor, timestamp: Date.now(), title: ex.title, mistakes: pm + 1, pointValue: ex.pointValue ?? 10 };
                                                         }
@@ -5852,9 +5852,9 @@ export default function App() {
                           </button>
                           <button
                             onClick={async () => {
-                              // 單題不通過 → 整個考官測驗需重考（清除所有考官題目紀錄）
-                              const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
-                              const proctorExamsInCat = activeExams.filter(e => proctorTypeList.includes(e.type));
+                              // 單題不通過 → 整個考官實作測驗需重考（只影響實作類題目）
+                              const proctorPracticalTypes = ['oral', 'practical', 'timed_task'];
+                              const proctorExamsInCat = activeExams.filter(e => proctorPracticalTypes.includes(e.type));
                               const newRecords = { ...currentUserData.examRecords };
                               for (const ex of proctorExamsInCat) {
                                 const pm = newRecords[ex.id]?.mistakes || 0;
@@ -5874,9 +5874,9 @@ export default function App() {
                     );
                   }
 
-                  // 逐題評分（問答題交卷後）
-                  const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
-                  const proctorExamsForReview = activeExams.filter((e) => proctorTypeList.includes(e.type) && currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
+                  // 逐題評分（考官電腦測驗交卷後）
+                  const proctorComputerTypeList = ['essay'];
+                  const proctorExamsForReview = activeExams.filter((e) => proctorComputerTypeList.includes(e.type) && currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
                   const reviewResults = proctorReviewModal.reviewResults || {};
                   const allReviewed = proctorExamsForReview.length > 0 && proctorExamsForReview.every((e) => reviewResults[e.id] === 'passed');
 
@@ -5915,10 +5915,10 @@ export default function App() {
                                 </button>
                                 <button
                                   onClick={async () => {
-                                    // 任何一題不通過 → 全部考官題目標記失敗
+                                    // 任何一題不通過 → 只有考官電腦測驗題目標記失敗
                                     const newRecords = { ...currentUserData.examRecords };
-                                    const allProctorExams = activeExams.filter((ex) => proctorTypeList.includes(ex.type));
-                                    for (const ex of allProctorExams) {
+                                    const allProctorComputerExams = activeExams.filter((ex) => proctorComputerTypeList.includes(ex.type));
+                                    for (const ex of allProctorComputerExams) {
                                       const pm = newRecords[ex.id]?.mistakes || 0;
                                       newRecords[ex.id] = { ...(typeof newRecords[ex.id] === 'object' ? newRecords[ex.id] : {}), status: 'failed', approver: proctorReviewModal.proctorName, timestamp: Date.now(), title: ex.title, mistakes: pm + 1, pointValue: ex.pointValue ?? 10 };
                                     }
@@ -6124,4 +6124,3 @@ export default function App() {
     </div>
   );
 }
-
