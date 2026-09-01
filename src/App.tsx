@@ -961,6 +961,7 @@ export default function App() {
     canEdit || (dailyConfig.graderRoles || []).includes(currentUserRole);
   const canApproveRetest =
     canEdit || (appConfig.retestApprovalRoles || []).includes(currentUserRole);
+  const canEditGps = canEdit || currentUserRole === '店長';
 
   // === 電腦測驗計時器 ===
   useEffect(() => {
@@ -2088,7 +2089,7 @@ export default function App() {
       )}
 
       {/* GPS 設定彈出視窗 */}
-      {showGpsModal && canEdit && (
+      {showGpsModal && canEditGps && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col border-none">
             <div className="flex justify-between items-center mb-6">
@@ -2107,7 +2108,7 @@ export default function App() {
               公尺內。未設定座標的門店將不受限制。
             </p>
             <div className="overflow-y-auto flex-1 space-y-4 pr-2 hide-scrollbar">
-              {stores.map((store) => (
+              {(canEdit ? stores : stores.filter(s => s.name === currentUserData?.store)).map((store) => (
                 <div
                   key={store.id}
                   className="bg-[#F0F2F5] p-5 rounded-[24px] border-none soft-shadow"
@@ -2474,6 +2475,15 @@ export default function App() {
                       title="設定管理"
                     >
                       <ClipboardCheck c="w-4 h-4" /> 設定管理
+                    </button>
+                  )}
+                  {!canEdit && canEditGps && (
+                    <button
+                      onClick={() => setShowGpsModal(true)}
+                      className="bg-orange-50 text-[#D85E38] p-2.5 rounded-full shadow-sm hover:scale-105 transition-transform"
+                      title="GPS 定位設定"
+                    >
+                      <MapPin c="w-5 h-5" />
                     </button>
                   )}
                   {!canEdit && (() => {
