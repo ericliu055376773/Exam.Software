@@ -998,6 +998,7 @@ export default function App() {
       if (newRecords[exam.id]?.status === 'passed' || newRecords[exam.id]?.status === 'failed') continue;
       hasNewSubmit = true;
       const userAnswer = currentAnswers[exam.id] || '';
+      const userAnswerStr = Array.isArray(userAnswer) ? JSON.stringify(userAnswer) : userAnswer;
       let status = 'failed';
       if (exam.type === 'tf' || exam.type === 'mc') {
         if (userAnswer === exam.correctAnswer) status = 'passed';
@@ -1010,7 +1011,7 @@ export default function App() {
       }
       const pm = newRecords[exam.id]?.mistakes || 0;
       const pv = exam.pointValue ?? 10;
-      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status, timestamp: Date.now(), title: exam.title, mistakes: status === 'failed' ? pm + 1 : pm, approver: selectedProctor, score: status === 'passed' ? pv : 0, pointValue: pv, userAnswer };
+      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status, timestamp: Date.now(), title: exam.title, mistakes: status === 'failed' ? pm + 1 : pm, approver: selectedProctor, score: status === 'passed' ? pv : 0, pointValue: pv, userAnswer: userAnswerStr };
     }
     if (hasNewSubmit) {
       updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
@@ -3715,22 +3716,26 @@ export default function App() {
                                     <div className="p-3 bg-[#FFE4DE] rounded-xl text-[#D85E38] font-bold text-xs border border-[#D85E38]/20 mb-3">
                                       <XCircle c="w-4 h-4 mr-1 inline" /> 此題答錯（重考時請重新作答）
                                     </div>
-                                    {empRecord?.userAnswer && (
+                                    {(() => {
+                                      const studentAnswer = empRecord?.userAnswer || currentAnswers[exam.id] || '';
+                                      if (!studentAnswer) return null;
+                                      return (
                                       <div className="p-3 bg-red-50 rounded-xl border border-red-200 mb-3">
                                         <span className="text-[10px] text-red-500 font-bold block mb-1">❌ 你的答案：</span>
                                         <p className="text-sm font-black text-red-600">
                                           {qType === 'mc' || qType === 'tf' ? (
-                                            `${empRecord.userAnswer}${qType === 'mc' && exam.options ? `. ${exam.options[['A','B','C','D'].indexOf(empRecord.userAnswer)] || ''}` : ''}`
+                                            `${studentAnswer}${qType === 'mc' && exam.options ? `. ${exam.options[['A','B','C','D'].indexOf(studentAnswer)] || ''}` : ''}`
                                           ) : qType === 'multiSelect' ? (
-                                            (() => { try { const arr = typeof empRecord.userAnswer === 'string' ? JSON.parse(empRecord.userAnswer) : empRecord.userAnswer; return Array.isArray(arr) ? arr.map(l => `${l}. ${exam.options?.[['A','B','C','D'].indexOf(l)] || ''}`).join('、') : String(empRecord.userAnswer); } catch { return String(empRecord.userAnswer); } })()
+                                            (() => { try { const arr = typeof studentAnswer === 'string' ? JSON.parse(studentAnswer) : studentAnswer; return Array.isArray(arr) && arr.length > 0 ? arr.map(l => `${l}. ${exam.options?.[['A','B','C','D'].indexOf(l)] || ''}`).join('、') : '未作答'; } catch { return String(studentAnswer); } })()
                                           ) : qType === 'ordering' ? (
-                                            (() => { try { const arr = typeof empRecord.userAnswer === 'string' ? JSON.parse(empRecord.userAnswer) : empRecord.userAnswer; return Array.isArray(arr) ? arr.map((item, idx) => `${idx+1}. ${item}`).join(' → ') : String(empRecord.userAnswer); } catch { return String(empRecord.userAnswer); } })()
+                                            (() => { try { const arr = typeof studentAnswer === 'string' ? JSON.parse(studentAnswer) : studentAnswer; return Array.isArray(arr) && arr.length > 0 ? arr.map((item, idx) => `${idx+1}. ${item}`).join(' → ') : '未完成排列'; } catch { return String(studentAnswer); } })()
                                           ) : (
-                                            String(empRecord.userAnswer || '')
+                                            String(studentAnswer || '未作答')
                                           )}
                                         </p>
                                       </div>
-                                    )}
+                                      );
+                                    })()}
                                     <div className="p-3 bg-green-50 rounded-xl border border-green-200 mb-3">
                                       <span className="text-[10px] text-green-600 font-bold block mb-1">✅ 正確答案：</span>
                                       <p className="text-sm font-black text-green-700">
@@ -4250,7 +4255,8 @@ export default function App() {
                                                 const pv = exam.pointValue ?? 10;
                                                 const pm = newRecords[exam.id]?.mistakes || 0;
                                                 const ua = currentAnswers[exam.id] || '';
-                                                newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: correct ? 'passed' : 'failed', timestamp: Date.now(), title: exam.title, mistakes: correct ? pm : pm + 1, approver: selectedProctor, score: correct ? pv : 0, pointValue: pv, needFullRetest: !allCorrect, userAnswer: ua };
+                                                const uaStr = (Array.isArray(ua)) ? JSON.stringify(ua) : ua;
+                                                newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: correct ? 'passed' : 'failed', timestamp: Date.now(), title: exam.title, mistakes: correct ? pm : pm + 1, approver: selectedProctor, score: correct ? pv : 0, pointValue: pv, needFullRetest: !allCorrect, userAnswer: uaStr };
                                               }
                                               await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
                                               const ca = currentUserData?.categoryAttempts || {};
