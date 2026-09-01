@@ -1010,7 +1010,7 @@ export default function App() {
       }
       const pm = newRecords[exam.id]?.mistakes || 0;
       const pv = exam.pointValue ?? 10;
-      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status, timestamp: Date.now(), title: exam.title, mistakes: status === 'failed' ? pm + 1 : pm, approver: selectedProctor, score: status === 'passed' ? pv : 0, pointValue: pv };
+      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status, timestamp: Date.now(), title: exam.title, mistakes: status === 'failed' ? pm + 1 : pm, approver: selectedProctor, score: status === 'passed' ? pv : 0, pointValue: pv, userAnswer };
     }
     if (hasNewSubmit) {
       updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
@@ -3715,6 +3715,22 @@ export default function App() {
                                     <div className="p-3 bg-[#FFE4DE] rounded-xl text-[#D85E38] font-bold text-xs border border-[#D85E38]/20 mb-3">
                                       <XCircle c="w-4 h-4 mr-1 inline" /> 此題答錯（重考時請重新作答）
                                     </div>
+                                    {empRecord?.userAnswer && (
+                                      <div className="p-3 bg-red-50 rounded-xl border border-red-200 mb-3">
+                                        <span className="text-[10px] text-red-500 font-bold block mb-1">❌ 你的答案：</span>
+                                        <p className="text-sm font-black text-red-600">
+                                          {qType === 'mc' || qType === 'tf' ? (
+                                            `${empRecord.userAnswer}${qType === 'mc' && exam.options ? `. ${exam.options[['A','B','C','D'].indexOf(empRecord.userAnswer)] || ''}` : ''}`
+                                          ) : qType === 'multiSelect' ? (
+                                            (() => { try { const arr = typeof empRecord.userAnswer === 'string' ? JSON.parse(empRecord.userAnswer) : empRecord.userAnswer; return Array.isArray(arr) ? arr.map(l => `${l}. ${exam.options?.[['A','B','C','D'].indexOf(l)] || ''}`).join('、') : String(empRecord.userAnswer); } catch { return String(empRecord.userAnswer); } })()
+                                          ) : qType === 'ordering' ? (
+                                            (() => { try { const arr = typeof empRecord.userAnswer === 'string' ? JSON.parse(empRecord.userAnswer) : empRecord.userAnswer; return Array.isArray(arr) ? arr.map((item, idx) => `${idx+1}. ${item}`).join(' → ') : String(empRecord.userAnswer); } catch { return String(empRecord.userAnswer); } })()
+                                          ) : (
+                                            String(empRecord.userAnswer || '')
+                                          )}
+                                        </p>
+                                      </div>
+                                    )}
                                     <div className="p-3 bg-green-50 rounded-xl border border-green-200 mb-3">
                                       <span className="text-[10px] text-green-600 font-bold block mb-1">✅ 正確答案：</span>
                                       <p className="text-sm font-black text-green-700">
@@ -4233,7 +4249,8 @@ export default function App() {
                                               for (const { exam, correct } of results) {
                                                 const pv = exam.pointValue ?? 10;
                                                 const pm = newRecords[exam.id]?.mistakes || 0;
-                                                newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: correct ? 'passed' : 'failed', timestamp: Date.now(), title: exam.title, mistakes: correct ? pm : pm + 1, approver: selectedProctor, score: correct ? pv : 0, pointValue: pv, needFullRetest: !allCorrect };
+                                                const ua = currentAnswers[exam.id] || '';
+                                                newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: correct ? 'passed' : 'failed', timestamp: Date.now(), title: exam.title, mistakes: correct ? pm : pm + 1, approver: selectedProctor, score: correct ? pv : 0, pointValue: pv, needFullRetest: !allCorrect, userAnswer: ua };
                                               }
                                               await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
                                               const ca = currentUserData?.categoryAttempts || {};
