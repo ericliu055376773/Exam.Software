@@ -1119,14 +1119,14 @@ export default function App() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      canApproveRetest &&
+      canEdit &&
       totalAdminNotifications > 0 &&
       !hasShownLoginNotice
     ) {
       setShowNotificationModal(true);
       setHasShownLoginNotice(true);
     }
-  }, [isAuthenticated, canEdit, isGrader, totalAdminNotifications, hasShownLoginNotice]);
+  }, [isAuthenticated, canEdit, totalAdminNotifications, hasShownLoginNotice]);
 
   function showToast(msg) {
     setToast(msg);
@@ -4519,13 +4519,17 @@ export default function App() {
                                                     <span className="text-[10px] text-green-600 font-bold">正確解答：</span>
                                                     <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{exam.correctAnswer || '未設定'}</p>
                                                   </div>
+                                                  {(proctorReviewModal.reviewResults || {})[exam.id] === 'passed' ? (
+                                                    <div className="py-2 text-center text-green-600 font-bold text-sm bg-green-50 rounded-xl">✅ 已標記通過</div>
+                                                  ) : (
                                                   <div className="flex gap-2">
                                                     <button
-                                                      onClick={async () => {
-                                                        const newRecords = { ...currentUserData.examRecords };
-                                                        newRecords[exam.id] = { ...newRecords[exam.id], status: 'passed', approver: selectedProctor, timestamp: Date.now() };
-                                                        await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
-                                                        showToast('✅ 第 ' + (idx + 1) + ' 題通過！');
+                                                      onClick={() => {
+                                                        setProctorReviewModal(prev => ({
+                                                          ...prev,
+                                                          reviewResults: { ...prev.reviewResults, [exam.id]: 'passed' },
+                                                        }));
+                                                        showToast('✅ 第 ' + (idx + 1) + ' 題標記通過');
                                                       }}
                                                       className="flex-1 py-3 bg-[#2F7E5B] text-white rounded-xl font-bold text-sm shadow-sm"
                                                     >
@@ -4544,12 +4548,14 @@ export default function App() {
                                                         await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
                                                         showToast('❌ 第 ' + (idx + 1) + ' 題未通過，考官測驗需整份重考');
                                                         setProctorSectionVerified(false);
+                                                        setProctorReviewModal(prev => ({ ...prev, reviewResults: {} }));
                                                       }}
                                                       className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold text-sm shadow-sm"
                                                     >
                                                       ❌ 不通過
                                                     </button>
                                                   </div>
+                                                  )}
                                                 </div>
                                               )}
 
@@ -4687,6 +4693,37 @@ export default function App() {
                                               )}
                                             </div>
                                           );
+                                        }
+
+                                        // 考官已驗證且全部標記通過 → 顯示確認按鈕
+                                        if (anyPending && proctorSectionVerified) {
+                                          const pendingProctorExams = proctorComputerExams.filter(e => currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
+                                          const allLocallyPassed = pendingProctorExams.length > 0 && pendingProctorExams.every(e => (proctorReviewModal.reviewResults || {})[e.id] === 'passed');
+                                          if (allLocallyPassed) {
+                                            return (
+                                              <button
+                                                onClick={async () => {
+                                                  const newRecords = { ...currentUserData.examRecords };
+                                                  for (const exam of pendingProctorExams) {
+                                                    newRecords[exam.id] = { ...newRecords[exam.id], status: 'passed', approver: selectedProctor, timestamp: Date.now() };
+                                                  }
+                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
+                                                  showToast('🎉 考官電腦測驗全部通過！');
+                                                  setProctorSectionVerified(false);
+                                                  setProctorReviewModal(prev => ({ ...prev, reviewResults: {} }));
+                                                }}
+                                                className="w-full mt-4 py-4 bg-[#2F7E5B] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#256B4D] active:scale-95"
+                                              >
+                                                ✅ 確認全部通過（{pendingProctorExams.length} 題）
+                                              </button>
+                                            );
+                                          } else {
+                                            return (
+                                              <div className="w-full mt-4 py-4 bg-green-50 text-green-600 rounded-xl font-bold text-sm text-center">
+                                                ✅ 考官已驗證，請逐題評閱上方考題（{Object.keys(proctorReviewModal.reviewResults || {}).length}/{pendingProctorExams.length} 已評）
+                                              </div>
+                                            );
+                                          }
                                         }
 
                                         // 有失敗 - 顯示重考申請
