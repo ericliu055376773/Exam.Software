@@ -2092,7 +2092,11 @@ export default function App() {
                               ? catExams.filter(e => !proctorTypeList.includes(e.type))
                               : catExams.filter(e => proctorTypeList.includes(e.type));
                             const newRecords = { ...(emp.examRecords || {}) };
-                            for (const ex of sectionExams) { delete newRecords[ex.id]; }
+                            const allCatExams = catExams;
+                            for (const ex of allCatExams) {
+                              if (rt.section === 'timed' && !proctorTypeList.includes(ex.type)) { delete newRecords[ex.id]; }
+                              else if (rt.section === 'proctor' && proctorTypeList.includes(ex.type)) { delete newRecords[ex.id]; }
+                            }
                             const ca = { ...(emp.categoryAttempts || {}) };
                             const cd = ca[rt.categoryId] || {};
                             if (rt.section === 'timed') { delete cd.timedRetestRequested; }
@@ -4200,10 +4204,9 @@ export default function App() {
                                       })}
                                       {!canEdit && !examTimeUp && showTimedSection === 'timed' && (() => {
                                         const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
+                                        const anyFailed2 = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
                                         const allDone = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
-                                        if (allDone) {
-                                          const anyFailed2 = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
-                                          if (anyFailed2) {
+                                        if (anyFailed2) {
                                             const catAttempts = currentUserData?.categoryAttempts || {};
                                             const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
                                             const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
@@ -4231,7 +4234,8 @@ export default function App() {
                                             );
                                           }
                                           return null;
-                                        }
+                                        if (allDone) { return null; }
+                                        const allAnsweredForSubmit = allAnswered;
                                         return (
                                           <button
                                             disabled={!allAnswered}
@@ -6542,4 +6546,3 @@ export default function App() {
     </div>
   );
 }
-
