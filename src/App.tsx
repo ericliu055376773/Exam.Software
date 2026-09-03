@@ -1141,8 +1141,21 @@ export default function App() {
             categoryId: catId,
             categoryName: cat?.name || '未知分類',
             section: 'proctor',
-            sectionLabel: '考官測驗',
+            sectionLabel: '考官電腦測驗',
             attempts: catData.proctor || 0,
+          });
+        }
+        if (catData.practicalRetestRequested) {
+          const cat = categories.find((c) => c.id === catId);
+          pendingRetests.push({
+            empId: emp.id,
+            empName: emp.name,
+            store: emp.store,
+            categoryId: catId,
+            categoryName: cat?.name || '未知分類',
+            section: 'practical',
+            sectionLabel: '考官實作測驗',
+            attempts: catData.practical || 0,
           });
         }
       });
@@ -2091,16 +2104,19 @@ export default function App() {
                             const sectionExams = rt.section === 'timed'
                               ? catExams.filter(e => !proctorTypeList.includes(e.type))
                               : catExams.filter(e => proctorTypeList.includes(e.type));
+                            const proctorComputerTypes = ['essay'];
+                            const proctorPracticalTypes = ['oral', 'practical', 'timed_task'];
                             const newRecords = { ...(emp.examRecords || {}) };
-                            const allCatExams = catExams;
-                            for (const ex of allCatExams) {
+                            for (const ex of catExams) {
                               if (rt.section === 'timed' && !proctorTypeList.includes(ex.type)) { delete newRecords[ex.id]; }
-                              else if (rt.section === 'proctor' && proctorTypeList.includes(ex.type)) { delete newRecords[ex.id]; }
+                              else if (rt.section === 'proctor' && proctorComputerTypes.includes(ex.type)) { delete newRecords[ex.id]; }
+                              else if (rt.section === 'practical' && proctorPracticalTypes.includes(ex.type)) { delete newRecords[ex.id]; }
                             }
                             const ca = { ...(emp.categoryAttempts || {}) };
                             const cd = ca[rt.categoryId] || {};
                             if (rt.section === 'timed') { delete cd.timedRetestRequested; }
-                            else { delete cd.proctorRetestRequested; }
+                            else if (rt.section === 'proctor') { delete cd.proctorRetestRequested; }
+                            else if (rt.section === 'practical') { delete cd.practicalRetestRequested; }
                             ca[rt.categoryId] = cd;
                             await updateDoc(doc(db, 'employees', rt.empId), { examRecords: newRecords, categoryAttempts: ca });
                             showToast(`已核准 ${rt.empName}「${rt.categoryName}」${rt.sectionLabel}重考`);
@@ -4621,6 +4637,12 @@ export default function App() {
 
                                               {!canEdit && !isPassed && !isPendingProctor && (qType === 'fill' || qType === 'essay') && (
                                                 <div className="mt-3">
+                                                  {isFailed && empRecord?.userAnswer && (
+                                                    <div className="p-3 bg-red-50 rounded-xl border border-red-200 mb-2">
+                                                      <span className="text-[10px] text-red-500 font-bold block mb-1">❌ 你上次的答案：</span>
+                                                      <p className="text-sm text-red-600 font-bold whitespace-pre-wrap">{empRecord.userAnswer}</p>
+                                                    </div>
+                                                  )}
                                                   <textarea
                                                     value={currentAnswers[exam.id] || ''}
                                                     onChange={(e) => handleAnswerChange(exam.id, e.target.value)}
@@ -5038,6 +5060,34 @@ export default function App() {
                                           </div>
                                         );
                                       })}
+                                      {!canEdit && anyPracticalFailed && (() => {
+                                        const catAttempts = currentUserData?.categoryAttempts || {};
+                                        const practicalAttemptCount = catAttempts[activeCategoryId]?.practical || 1;
+                                        const practicalRetestRequested = catAttempts[activeCategoryId]?.practicalRetestRequested;
+                                        if (practicalRetestRequested) {
+                                          return (
+                                            <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                              ⏳ 已申請重考（第 {practicalAttemptCount + 1} 次），等待主管核准...
+                                            </div>
+                                          );
+                                        }
+                                        return (
+                                          <button
+                                            onClick={async () => {
+                                              const ca = currentUserData?.categoryAttempts || {};
+                                              const cd = ca[activeCategoryId] || {};
+                                              cd.practicalRetestRequested = true;
+                                              cd.practical = (cd.practical || 0) + 1;
+                                              ca[activeCategoryId] = cd;
+                                              await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
+                                              showToast('已申請考官實作測驗重考，請等待主管核准！');
+                                            }}
+                                            className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
+                                          >
+                                            🔄 申請重新測驗（已考 {practicalAttemptCount} 次）
+                                          </button>
+                                        );
+                                      })()}
                                         </>
                                       )}
                                     </div>
