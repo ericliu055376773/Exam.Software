@@ -3010,7 +3010,7 @@ export default function App() {
                                       ) : (
                                         <>
                                           {!canEdit && timedSectionStarted && !anyTimedFailed && (
-                                            <div className="flex items-center justify-between bg-[#EBF2FF]/50 p-2.5 rounded-xl mb-2">
+                                            <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#EBF2FF] p-3 shadow-md border-b border-blue-200">
                                               <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
                                               <div className="flex items-center gap-2">
                                                 {examTimeRemaining !== null && (
@@ -3661,7 +3661,7 @@ export default function App() {
                                   {String(exam.title)}
                                 </h3>
                                 {exam.description && (
-                                  <p className="text-sm text-gray-500 mb-4 text-left bg-gray-50 p-3 rounded-xl">
+                                  <p className="text-sm text-gray-500 mb-4 text-left bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">
                                     {String(exam.description)}
                                   </p>
                                 )}
@@ -4233,7 +4233,6 @@ export default function App() {
                                               </button>
                                             );
                                           }
-                                          return null;
                                         if (allDone) { return null; }
                                         const allAnsweredForSubmit = allAnswered;
                                         return (
@@ -4371,7 +4370,7 @@ export default function App() {
                                       ) : (
                                         <>
                                           {!canEdit && proctorSectionStarted && (
-                                            <div className="flex items-center justify-between bg-[#FCEEEA]/50 p-2.5 rounded-xl mb-2">
+                                            <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#FCEEEA] p-3 shadow-md border-b border-orange-200">
                                               <span className="text-xs font-bold text-[#D85E38]">考官：{selectedProctor}</span>
                                               {proctorTimeRemaining !== null && (
                                                 <span className={`text-xs font-black px-3 py-1 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-[#FCEEEA] text-[#D85E38]'}`}>
@@ -4560,7 +4559,7 @@ export default function App() {
                                             </div>
                                             <div className="bg-white p-5 rounded-[20px] shadow-sm border border-gray-100">
                                               <h3 className="text-lg font-black text-[#1A1A1A] mb-3">{exam.title}</h3>
-                                              {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl">{exam.description}</p>}
+                                              {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{exam.description}</p>}
 
                                               {!canEdit && isPendingProctor && !proctorSectionVerified && (
                                                 <div className="mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
@@ -5008,7 +5007,7 @@ export default function App() {
                                             </div>
                                             <div className="bg-white p-5 rounded-[16px] shadow-sm border border-gray-50">
                                               <h3 className="font-black text-[#1A1A1A] text-base mb-4 text-left">{exam.title}</h3>
-                                              {exam.description && <p className="text-sm text-gray-500 mb-3 text-left bg-gray-50 p-3 rounded-xl">{exam.description}</p>}
+                                              {exam.description && <p className="text-sm text-gray-500 mb-3 text-left bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{exam.description}</p>}
                                               {!canEdit && !isPassed && !isFailed && (
                                                 <div className="mt-3 space-y-2">
                                                   <div className={`p-3 rounded-xl border-2 border-dashed ${qType === 'oral' ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
