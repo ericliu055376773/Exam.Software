@@ -696,7 +696,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   // === App 設定 (標題、Logo) ===
-  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [] });
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true });
   const [editAppTitle, setEditAppTitle] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showAppConfigModal, setShowAppConfigModal] = useState(false);
@@ -933,7 +933,7 @@ export default function App() {
       doc(db, 'settings', 'appConfig'),
       (snap) => {
         if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', ...snap.data() });
-        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [] });
+        else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true });
       }
     );
 
@@ -1256,7 +1256,7 @@ export default function App() {
       );
       if (matchedUser) {
         const userStore = stores.find((s) => s.name === store);
-        if (userStore && userStore.lat && userStore.lng) {
+        if (appConfig.gpsEnabled !== false && userStore && userStore.lat && userStore.lng) {
           setIsCheckingGPS(true);
           showToast('正在驗證您的 GPS 定位，請稍候...');
           if (!navigator.geolocation) {
@@ -2162,6 +2162,26 @@ export default function App() {
               設定後，該門店員工登入時須距離此座標 100
               公尺內。未設定座標的門店將不受限制。
             </p>
+            {canEdit && (
+              <div className="flex items-center justify-between bg-[#F0F2F5] p-4 rounded-2xl mb-4">
+                <div>
+                  <p className="text-sm font-black text-[#1A1A1A]">GPS 定位驗證</p>
+                  <p className="text-[10px] text-gray-400 font-bold mt-0.5">{appConfig.gpsEnabled !== false ? '開啟中：員工登入需驗證 GPS' : '已關閉：員工登入無需驗證 GPS'}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const newVal = appConfig.gpsEnabled === false ? true : false;
+                    const newConfig = { ...appConfig, gpsEnabled: newVal };
+                    setAppConfig(newConfig);
+                    await updateDoc(doc(db, 'appConfig', 'main'), { gpsEnabled: newVal });
+                    showToast(newVal ? '✅ GPS 定位驗證已開啟' : '🔓 GPS 定位驗證已關閉');
+                  }}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${appConfig.gpsEnabled !== false ? 'bg-[#2F7E5B]' : 'bg-gray-300'}`}
+                >
+                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${appConfig.gpsEnabled !== false ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            )}
             <div className="overflow-y-auto flex-1 space-y-4 pr-2 hide-scrollbar">
               {(canEdit ? stores : stores.filter(s => s.name === currentUserData?.store)).map((store) => (
                 <div
@@ -4365,7 +4385,7 @@ export default function App() {
                                   </button>
                                   {!allProctorComputerPassed && showProctorSection && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!canEdit && !proctorSectionStarted ? (
+                                      {!canEdit && !proctorSectionStarted && !anyProctorComputerFailed ? (
                                         <div className="p-4 bg-[#FCEEEA]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#D85E38]">請選擇考官後開始考官測驗</p>
                                           {(activeCategoryData?.proctorTimeLimit ?? 0) > 0 && (
@@ -4385,7 +4405,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && proctorSectionStarted && (
+                                          {!canEdit && proctorSectionStarted && !anyProctorComputerFailed && (
                                             <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#FCEEEA] p-3 shadow-md border-b border-orange-200">
                                               <span className="text-xs font-bold text-[#D85E38]">考官：{selectedProctor}</span>
                                               {proctorTimeRemaining !== null && (
@@ -4798,8 +4818,8 @@ export default function App() {
                                           );
                                         }
 
-                                        // 有失敗 - 顯示重考申請
-                                        if (allDone && anyFailed) {
+                                        // 有失敗 - 顯示重考申請（優先於交卷按鈕）
+                                        if (anyFailed) {
                                           if (proctorRetestRequested) {
                                             return <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">⏳ 已申請考官測驗重考（第 {proctorAttempts + 1} 次），等待主管核准...</div>;
                                           }
@@ -4895,7 +4915,7 @@ export default function App() {
                                   </button>
                                   {!allPracticalPassed && showTimedSection === 'practical' && (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!canEdit && !selectedProctor ? (
+                                      {!canEdit && !selectedProctor && !anyPracticalFailed ? (
                                         <div className="p-4 bg-[#F3E8FF]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#7C3AED]">請選擇考官後開始實作測驗</p>
                                           <div className="flex gap-2">
@@ -4909,7 +4929,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                        {!canEdit && selectedProctor && (
+                                        {!canEdit && selectedProctor && !anyPracticalFailed && (
                                           <div className="flex items-center justify-between bg-[#F3E8FF]/50 p-2.5 rounded-xl">
                                             <span className="text-xs font-bold text-[#7C3AED]">考官：{selectedProctor}</span>
                                             <button onClick={() => setSelectedProctor('')} className="text-[10px] text-gray-400 font-bold hover:text-gray-600">更換</button>
