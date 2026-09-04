@@ -932,7 +932,10 @@ export default function App() {
     const unsubAppConfig = onSnapshot(
       doc(db, 'settings', 'appConfig'),
       (snap) => {
-        if (snap.exists()) setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', ...snap.data() });
+        if (snap.exists()) {
+          const data = snap.data();
+          setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '', retestApprovalRoles: [], gpsEnabled: true, ...data });
+        }
         else setAppConfig({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true });
       }
     );
