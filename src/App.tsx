@@ -2176,7 +2176,7 @@ export default function App() {
                     const newVal = appConfig.gpsEnabled === false ? true : false;
                     const newConfig = { ...appConfig, gpsEnabled: newVal };
                     setAppConfig(newConfig);
-                    await updateDoc(doc(db, 'appConfig', 'main'), { gpsEnabled: newVal });
+                    await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig, gpsEnabled: newVal }, { merge: true });
                     showToast(newVal ? '✅ GPS 定位驗證已開啟' : '🔓 GPS 定位驗證已關閉');
                   }}
                   className={`relative w-12 h-7 rounded-full transition-colors ${appConfig.gpsEnabled !== false ? 'bg-[#2F7E5B]' : 'bg-gray-300'}`}
