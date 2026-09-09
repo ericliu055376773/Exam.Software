@@ -1074,17 +1074,16 @@ export default function App() {
   }, [proctorTimeUp]);
 
   // === 重考核准後重置前端狀態 ===
+  // 只在重考申請狀態從 true 變成 undefined/false 時才觸發重置（代表管理員核准了）
+  const prevRetestFlags = React.useRef({});
   useEffect(() => {
     if (!currentUserData || canEdit) return;
-    const activeCat = categories.find((c) => c.id === activeCategoryId);
-    if (!activeCat) return;
-    const catExams = exams.filter((e) => e.categoryId === activeCategoryId);
-    const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
-    const timedExamsInCat = catExams.filter((e) => !proctorTypeList.includes(e.type));
-    const proctorExamsInCat = catExams.filter((e) => proctorTypeList.includes(e.type));
-    const hasTimedRecords = timedExamsInCat.some(e => currentUserData?.examRecords?.[e.id]);
-    const hasProctorRecords = proctorExamsInCat.some(e => currentUserData?.examRecords?.[e.id]);
-    if (!hasTimedRecords && timedSectionStarted) {
+    const ca = currentUserData?.categoryAttempts || {};
+    const cd = ca[activeCategoryId] || {};
+    const prevFlags = prevRetestFlags.current[activeCategoryId] || {};
+
+    // 電腦測驗：之前有申請重考，現在沒了 → 代表被核准
+    if (prevFlags.timedRetestRequested && !cd.timedRetestRequested) {
       setTimedSectionStarted(false);
       setExamStarted(false);
       setExamStartTime(null);
@@ -1093,8 +1092,10 @@ export default function App() {
       setSelectedProctor('');
       setShowTimedSection(false);
       setCurrentAnswers({});
+      showToast('✅ 電腦測驗重考已核准！請重新開始測驗');
     }
-    if (!hasProctorRecords && proctorSectionStarted) {
+    // 考官電腦測驗：之前有申請重考，現在沒了
+    if (prevFlags.proctorRetestRequested && !cd.proctorRetestRequested) {
       setProctorSectionStarted(false);
       setProctorSectionVerified(false);
       setProctorSectionStartTime(null);
@@ -1104,8 +1105,22 @@ export default function App() {
       setShowProctorSection(false);
       setCurrentAnswers({});
       setProctorReviewModal(prev => ({ ...prev, reviewResults: {} }));
+      showToast('✅ 考官測驗重考已核准！請重新開始測驗');
     }
-  }, [currentUserData?.examRecords, activeCategoryId]);
+    // 考官實作測驗：之前有申請重考，現在沒了
+    if (prevFlags.practicalRetestRequested && !cd.practicalRetestRequested) {
+      setShowTimedSection(false);
+      setSelectedProctor('');
+      showToast('✅ 實作測驗重考已核准！請重新開始測驗');
+    }
+
+    // 更新 ref
+    prevRetestFlags.current[activeCategoryId] = {
+      timedRetestRequested: cd.timedRetestRequested || false,
+      proctorRetestRequested: cd.proctorRetestRequested || false,
+      practicalRetestRequested: cd.practicalRetestRequested || false,
+    };
+  }, [currentUserData?.categoryAttempts, activeCategoryId]);
 
   const handleRecordsTabClick = () => {
     setActiveTab('records');
