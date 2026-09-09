@@ -4291,8 +4291,16 @@ export default function App() {
                                         const allAnsweredForSubmit = allAnswered;
                                         return (
                                           <button
-                                            disabled={!allAnswered}
                                             onClick={async () => {
+                                              if (!allAnswered) {
+                                                const firstUnanswered = timedExams.find((e) => currentAnswers[e.id] === undefined || String(currentAnswers[e.id]).trim() === '');
+                                                if (firstUnanswered) {
+                                                  const el = document.getElementById(`exam-${firstUnanswered.id}`);
+                                                  if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-2', 'ring-red-400', 'ring-offset-2'); setTimeout(() => el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2'), 2000); }
+                                                  showToast('⚠️ 還有題目未作答，已跳至該題目');
+                                                }
+                                                return;
+                                              }
                                               let allCorrect = true;
                                               const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
                                               // 先檢查所有答案
@@ -4326,9 +4334,9 @@ export default function App() {
                                               if (allCorrect) showToast('🎉 全部答對！電腦測驗通過！');
                                               else showToast('❌ 有題目答錯，整份電腦測驗需申請重考！');
                                             }}
-                                            className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${allAnswered ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                            className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${allAnswered ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95'}`}
                                           >
-                                            📝 交卷（共 {timedExams.length} 題{!allAnswered ? '，請先完成所有題目' : ''}）
+                                            📝 交卷
                                           </button>
                                         );
                                       })()}
@@ -4537,6 +4545,7 @@ export default function App() {
 
                                         const card = (
                                           <div
+                                            id={`exam-${exam.id}`}
                                             key={exam.id}
                                             className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${
                                               isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : isPendingProctor ? 'border-l-4 border-l-orange-400' : ''
@@ -4860,8 +4869,16 @@ export default function App() {
 
                                           return (
                                             <button
-                                              disabled={!canSubmit}
                                               onClick={async () => {
+                                                if (!canSubmit) {
+                                                  const firstUnanswered = writableExams.find((e) => !currentAnswers[e.id]?.trim());
+                                                  if (firstUnanswered) {
+                                                    const el = document.getElementById(`exam-${firstUnanswered.id}`);
+                                                    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-2', 'ring-red-400', 'ring-offset-2'); setTimeout(() => el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2'), 2000); }
+                                                    showToast('⚠️ 還有題目未作答，已跳至該題目');
+                                                  }
+                                                  return;
+                                                }
                                                 if (!selectedProctor) { showToast('請先選擇考官！'); return; }
                                                 const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
                                                 for (const exam of proctorComputerExams) {
@@ -4882,9 +4899,9 @@ export default function App() {
                                                 setCurrentAnswers({});
                                                 showToast('📝 考官測驗已交卷！請考官輸入密碼評閱。');
                                               }}
-                                              className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${canSubmit ? 'bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                              className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95`}
                                             >
-                                              📝 考官電腦測驗交卷（共 {proctorComputerExams.length} 題{!canSubmit ? '，請先完成填寫題目' : ''}）
+                                              📝 交卷
                                             </button>
                                           );
                                         }
