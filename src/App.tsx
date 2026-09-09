@@ -3591,6 +3591,7 @@ export default function App() {
 
                           return (
                             <div
+                              id={`exam-${exam.id}`}
                               key={exam.id}
                               draggable={canEdit}
                               onDragStart={() => {
@@ -5051,7 +5052,7 @@ export default function App() {
                                         }
 
                                         return (
-                                          <div key={exam.id} className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : ''}`}>
+                                          <div key={exam.id} id={`exam-${exam.id}`} className={`bg-[#F7F8FA] p-5 rounded-[24px] relative overflow-hidden transition-all ${isPassed ? 'border-l-4 border-l-green-400 opacity-70' : isFailed ? 'border-l-4 border-l-red-400' : ''}`}>
                                             {canEdit && (
                                               <div className="flex items-center justify-end gap-1.5 mb-2">
                                                 <button onClick={async () => { const catExams = exams.filter(e => e.categoryId === exam.categoryId); const idx = catExams.findIndex(e => e.id === exam.id); if (idx > 0) { const batch = []; const prev = catExams[idx - 1]; const curOrder = exam.order ?? idx; const prevOrder = prev.order ?? (idx - 1); await updateDoc(doc(db, 'exams', exam.id), { order: prevOrder }); await updateDoc(doc(db, 'exams', prev.id), { order: curOrder }); } }} className="text-gray-400 hover:text-[#5C6AC4] p-1.5 bg-white rounded-full shadow-sm"><ChevronRight c="w-3.5 h-3.5 -rotate-90" /></button>
