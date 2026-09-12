@@ -681,6 +681,7 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
 export default function App() {
   // === 自動偵測新版本 ===
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   useEffect(() => {
     let initialHash = null;
     const checkForUpdate = async () => {
@@ -715,7 +716,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   // === App 設定 (標題、Logo) ===
-  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true });
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true, timeUpMessage: '考試時間已結束，系統已自動交卷。' });
   const [editAppTitle, setEditAppTitle] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showAppConfigModal, setShowAppConfigModal] = useState(false);
@@ -1037,7 +1038,7 @@ export default function App() {
     }
     if (hasNewSubmit) {
       updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
-      showToast('⏰ 時間到！已自動交卷');
+      setShowTimeUpModal(true);
       setCurrentAnswers({});
     }
   }, [examTimeUp]);
@@ -1064,7 +1065,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [proctorSectionStarted, proctorSectionStartTime, activeCategoryId, categories]);
 
-  // === 考官電腦測驗時間到自動交卷 ===
+  // === 考官電腦測驗時間到直接不通過 ===
   useEffect(() => {
     if (!proctorTimeUp || !currentUserData || canEdit) return;
     const catExams = exams.filter((e) => e.categoryId === activeCategoryId || (!e.categoryId && categories[0]?.id === activeCategoryId));
@@ -1073,12 +1074,13 @@ export default function App() {
     const newRecords = currentUserData.examRecords ? { ...currentUserData.examRecords } : {};
     let hasNewSubmit = false;
     for (const exam of proctorComputerExamsForSubmit) {
-      if (newRecords[exam.id]?.status === 'passed' || newRecords[exam.id]?.status === 'pending_proctor') continue;
+      if (newRecords[exam.id]?.status === 'passed') continue;
       hasNewSubmit = true;
       const pv = exam.pointValue ?? 10;
       const pm = newRecords[exam.id]?.mistakes || 0;
       const userAnswer = currentAnswers[exam.id] || newRecords[exam.id]?.userAnswer || '';
-      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: 'pending_proctor', timestamp: Date.now(), title: exam.title, mistakes: pm, approver: selectedProctor, score: 0, pointValue: pv, userAnswer };
+      const userAnswerStr = Array.isArray(userAnswer) ? JSON.stringify(userAnswer) : userAnswer;
+      newRecords[exam.id] = { ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}), status: 'failed', timestamp: Date.now(), title: exam.title, mistakes: pm + 1, approver: selectedProctor, score: 0, pointValue: pv, userAnswer: userAnswerStr };
     }
     if (hasNewSubmit) {
       const ca = currentUserData?.categoryAttempts || {};
@@ -1087,8 +1089,8 @@ export default function App() {
       cd.lastProctorAt = Date.now();
       ca[activeCategoryId] = cd;
       updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca });
-      showToast('⏰ 時間到！考官測驗已自動交卷，請考官輸入密碼評閱。');
       setCurrentAnswers({});
+      setShowTimeUpModal(true);
     }
   }, [proctorTimeUp]);
 
@@ -6594,6 +6596,27 @@ export default function App() {
 
             {/* Logo 設定 */}
             <div className="pt-5 border-t border-gray-100">
+              <label className="text-[11px] font-bold text-gray-500 block mb-2 ml-1">⏰ 時間到提示文字</label>
+              <textarea
+                value={appConfig.timeUpMessage || ''}
+                onChange={(e) => setAppConfig(prev => ({ ...prev, timeUpMessage: e.target.value }))}
+                className="w-full p-4 bg-[#F0F2F5] rounded-[20px] font-bold text-[#1A1A1A] outline-none focus:ring-2 focus:ring-[#D85E38]/50 border-none text-sm min-h-[80px] resize-none"
+                placeholder="考試時間已結束，系統已自動交卷。"
+              />
+              <p className="text-[10px] text-gray-400 mt-1 ml-1">當考試時間到時，會彈出提示視窗顯示此文字</p>
+              <button
+                onClick={async () => {
+                  await setDoc(doc(db, 'settings', 'appConfig'), { ...appConfig }, { merge: true });
+                  showToast('時間到提示文字已更新！');
+                }}
+                className="mt-3 w-full py-3 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors shadow-md"
+              >
+                儲存
+              </button>
+            </div>
+
+            {/* Logo 設定 */}
+            <div className="pt-5 border-t border-gray-100">
               <label className="text-[11px] font-bold text-gray-500 block mb-3 ml-1">系統 Logo 圖示</label>
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden bg-[#FCEEEA] flex items-center justify-center shrink-0 shadow-sm border-2 border-white">
@@ -6662,6 +6685,28 @@ export default function App() {
           onSelect={handlePresetAvatarSelect}
           onClose={() => { setShowAvatarPicker(false); setAvatarPickerTarget(null); }}
         />
+      )}
+
+      {/* 時間到彈窗 */}
+      {showTimeUpModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 z-[10000]" style={{ position: 'fixed', zIndex: 10000 }}>
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95">
+            <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+              <span className="text-7xl">⏰</span>
+            </div>
+            <h3 className="font-black text-2xl text-[#D85E38] mb-3">時間到！</h3>
+            <p className="text-sm text-gray-600 font-bold leading-relaxed whitespace-pre-wrap mb-6">
+              {appConfig.timeUpMessage || '考試時間已結束，系統已自動交卷。'}
+            </p>
+            <button
+              onClick={() => setShowTimeUpModal(false)}
+              className="w-full py-4 bg-[#D85E38] text-white rounded-2xl font-black text-sm shadow-lg hover:bg-[#C25330] active:scale-95 transition-all"
+            >
+              我知道了
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       {showUpdateBanner && ReactDOM.createPortal(
