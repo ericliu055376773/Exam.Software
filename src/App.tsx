@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
@@ -678,6 +679,24 @@ const AchievementProgress = ({ emp, categories, exams, compact = false }) => {
 
 
 export default function App() {
+  // === 自動偵測新版本 ===
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  useEffect(() => {
+    let initialHash = null;
+    const checkForUpdate = async () => {
+      try {
+        const res = await fetch('/', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+        const html = await res.text();
+        const match = html.match(/src="\/assets\/(index-[^"]+\.js)"/);
+        const currentHash = match ? match[1] : html.length.toString();
+        if (initialHash === null) { initialHash = currentHash; return; }
+        if (currentHash !== initialHash) { setShowUpdateBanner(true); }
+      } catch {}
+    };
+    checkForUpdate();
+    const interval = setInterval(checkForUpdate, 60000);
+    return () => clearInterval(interval);
+  }, []);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [currentUserRole, setCurrentUserRole] = useState(null);
@@ -3029,7 +3048,7 @@ export default function App() {
                                       <div className="text-left">
                                         <h4 className={`font-black text-sm ${allTimedPassed ? 'text-green-600' : anyTimedFailed ? 'text-red-500' : 'text-[#3B82F6]'}`}>電腦測驗</h4>
                                         <p className={`text-[10px] font-bold ${allTimedPassed ? 'text-green-500' : anyTimedFailed ? 'text-red-400' : 'text-[#3B82F6]/60'}`}>
-                                          {timedExams.length} 題・{allTimedPassed ? '已通過' : anyTimedFailed ? '未通過・需重考' : '自動批改・計時'}
+                                          {timedExams.length} 題・{allTimedPassed ? '已通過' : anyTimedFailed ? '未通過・需重考' : `自動批改${(activeCategoryData?.timeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.timeLimit} 分鐘` : '・計時'}`}
                                         </p>
                                       </div>
                                     </div>
@@ -3063,17 +3082,18 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && timedSectionStarted && !anyTimedFailed && (
-                                            <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#EBF2FF] p-3 shadow-md border-b border-blue-200">
-                                              <span className="text-xs font-bold text-[#3B82F6]">考官：{selectedProctor}</span>
+                                          {!canEdit && timedSectionStarted && !anyTimedFailed && typeof document !== 'undefined' && ReactDOM.createPortal(
+                                            <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#EBF2FF] px-4 py-3 shadow-lg border-b-2 border-blue-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+                                              <span className="text-sm font-black text-[#3B82F6]">考官：{selectedProctor}</span>
                                               <div className="flex items-center gap-2">
                                                 {examTimeRemaining !== null && (
-                                                  <span className={`text-xs font-black px-3 py-1 rounded-full ${examTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : examTimeRemaining < 60000 ? 'bg-red-100 text-red-600' : 'bg-[#EBF2FF] text-[#3B82F6]'}`}>
+                                                  <span className={`text-sm font-black px-4 py-1.5 rounded-full ${examTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : examTimeRemaining < 60000 ? 'bg-red-500 text-white' : 'bg-white text-[#3B82F6]'}`}>
                                                     {examTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(examTimeRemaining / 60000)}:${String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
                                                   </span>
                                                 )}
                                               </div>
-                                            </div>
+                                            </div>,
+                                            document.body
                                           )}
                                       {timedExams.map((exam) => {
                                         const globalIdx = activeExams.indexOf(exam);
@@ -4432,15 +4452,16 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && proctorSectionStarted && !anyProctorComputerFailed && (
-                                            <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#FCEEEA] p-3 shadow-md border-b border-orange-200">
-                                              <span className="text-xs font-bold text-[#D85E38]">考官：{selectedProctor}</span>
+                                          {!canEdit && proctorSectionStarted && !anyProctorComputerFailed && typeof document !== 'undefined' && ReactDOM.createPortal(
+                                            <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#FCEEEA] px-4 py-3 shadow-lg border-b-2 border-orange-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+                                              <span className="text-sm font-black text-[#D85E38]">考官：{selectedProctor}</span>
                                               {proctorTimeRemaining !== null && (
-                                                <span className={`text-xs font-black px-3 py-1 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-[#FCEEEA] text-[#D85E38]'}`}>
+                                                <span className={`text-sm font-black px-4 py-1.5 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-white text-[#D85E38]'}`}>
                                                   {proctorTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(proctorTimeRemaining / 60000)}:${String(Math.floor((proctorTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
                                                 </span>
                                               )}
-                                            </div>
+                                            </div>,
+                                            document.body
                                           )}
                                       {proctorComputerExams.map((exam, idx) => {
                                         const globalIdx = activeExams.indexOf(exam);
@@ -6641,6 +6662,16 @@ export default function App() {
           onSelect={handlePresetAvatarSelect}
           onClose={() => { setShowAvatarPicker(false); setAvatarPickerTarget(null); }}
         />
+      )}
+
+      {showUpdateBanner && ReactDOM.createPortal(
+        <div className="fixed top-0 left-0 right-0 z-[10000] bg-[#D85E38] text-white p-3 flex items-center justify-between shadow-lg animate-in slide-in-from-top">
+          <span className="text-xs font-bold">🔄 系統已更新，請重新整理以取得最新版本</span>
+          <button onClick={() => window.location.reload()} className="bg-white text-[#D85E38] px-4 py-1.5 rounded-full text-xs font-black hover:bg-gray-100 active:scale-95 transition-all">
+            立即更新
+          </button>
+        </div>,
+        document.body
       )}
 
       {toast && (
