@@ -4453,9 +4453,11 @@ export default function App() {
                                       </div>
                                     )}
                                   </button>
-                                  {!allProctorComputerPassed && showProctorSection && (
+                                  {!allProctorComputerPassed && showProctorSection && (() => {
+                                    const anyPendingProctor = proctorComputerExams.some((e) => currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
+                                    return (
                                     <div className="bg-white p-3 space-y-4">
-                                      {!canEdit && !proctorSectionStarted && !anyProctorComputerFailed ? (
+                                      {!canEdit && !proctorSectionStarted && !anyProctorComputerFailed && !anyPendingProctor ? (
                                         <div className="p-4 bg-[#FCEEEA]/50 rounded-xl space-y-3">
                                           <p className="text-xs font-bold text-[#D85E38]">請選擇考官後開始考官測驗</p>
                                           {(activeCategoryData?.proctorTimeLimit ?? 0) > 0 && (
@@ -4475,7 +4477,10 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && proctorSectionStarted && !anyProctorComputerFailed && typeof document !== 'undefined' && ReactDOM.createPortal(
+                                          {!canEdit && proctorSectionStarted && !anyProctorComputerFailed && (() => {
+                                            const anyPendingForTimer = proctorComputerExams.some((e) => currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
+                                            if (anyPendingForTimer) return null;
+                                            return typeof document !== 'undefined' && ReactDOM.createPortal(
                                             <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#FCEEEA] px-4 py-3 shadow-lg border-b-2 border-orange-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
                                               <span className="text-sm font-black text-[#D85E38]">考官：{selectedProctor}</span>
                                               {proctorTimeRemaining !== null && (
@@ -4485,7 +4490,8 @@ export default function App() {
                                               )}
                                             </div>,
                                             document.body
-                                          )}
+                                          );
+                                          })()}
                                       {proctorComputerExams.map((exam, idx) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
@@ -4960,7 +4966,8 @@ export default function App() {
                                         </>
                                       )}
                                     </div>
-                                  )}
+                                    );
+                                  })()}
                                 </div>
                               );
                               })()}
