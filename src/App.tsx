@@ -2673,10 +2673,22 @@ export default function App() {
                               if (canEdit) handleCategoryDrop(cat.id);
                             }}
                             onClick={() => {
-                              // 考試進行中不能切換分類
-                              if (!canEdit && (timedSectionStarted || proctorSectionStarted)) {
-                                showToast('⚠️ 考試進行中，無法切換分類！請先完成或交卷。');
-                                return;
+                              // 考試進行中且尚未交卷不能切換分類
+                              if (!canEdit) {
+                                const catExamsForCheck = exams.filter(e => e.categoryId === activeCategoryId);
+                                const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
+                                const timedExamsForCheck = catExamsForCheck.filter(e => !proctorTypeList.includes(e.type));
+                                const proctorExamsForCheck = catExamsForCheck.filter(e => proctorTypeList.includes(e.type));
+                                const allTimedDone = timedExamsForCheck.every(e => { const r = currentUserData?.examRecords?.[e.id]; return r && (r.status === 'passed' || r.status === 'failed' || r === 'passed' || r === 'failed'); });
+                                const allProctorDone = proctorExamsForCheck.every(e => { const r = currentUserData?.examRecords?.[e.id]; return r && (r.status === 'passed' || r.status === 'failed' || r.status === 'pending_proctor' || r === 'passed' || r === 'failed'); });
+                                if (timedSectionStarted && !allTimedDone) {
+                                  showToast('⚠️ 電腦測驗進行中，請先交卷！');
+                                  return;
+                                }
+                                if (proctorSectionStarted && !allProctorDone) {
+                                  showToast('⚠️ 考官電腦測驗進行中，請先交卷！');
+                                  return;
+                                }
                               }
                               if (canEdit || cat.isUnlocked) {
                                 setActiveCategoryId(cat.id);
@@ -4359,6 +4371,10 @@ export default function App() {
                                               ca[activeCategoryId] = cd;
                                               await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
                                               setCurrentAnswers({});
+                                              setTimedSectionStarted(false);
+                                              setExamStartTime(null);
+                                              setExamTimeRemaining(null);
+                                              setExamTimeUp(false);
                                               if (allCorrect) showToast('🎉 全部答對！電腦測驗通過！');
                                               else showToast('❌ 有題目答錯，整份電腦測驗需申請重考！');
                                             }}
@@ -4926,6 +4942,10 @@ export default function App() {
                                                 ca3[activeCategoryId] = cd3;
                                                 await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca3 });
                                                 setCurrentAnswers({});
+                                                setProctorSectionStarted(false);
+                                                setProctorSectionStartTime(null);
+                                                setProctorTimeRemaining(null);
+                                                setProctorTimeUp(false);
                                                 showToast('📝 考官測驗已交卷！請考官輸入密碼評閱。');
                                               }}
                                               className={`w-full mt-4 py-4 rounded-xl font-bold text-sm flex items-center justify-center transition-all bg-[#D85E38] text-white shadow-lg hover:bg-[#C25330] active:scale-95`}
