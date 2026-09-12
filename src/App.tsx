@@ -2673,6 +2673,11 @@ export default function App() {
                               if (canEdit) handleCategoryDrop(cat.id);
                             }}
                             onClick={() => {
+                              // 考試進行中不能切換分類
+                              if (!canEdit && (timedSectionStarted || proctorSectionStarted)) {
+                                showToast('⚠️ 考試進行中，無法切換分類！請先完成或交卷。');
+                                return;
+                              }
                               if (canEdit || cat.isUnlocked) {
                                 setActiveCategoryId(cat.id);
                                 setExamStarted(false);
@@ -6518,8 +6523,8 @@ export default function App() {
       {/* App 設定彈窗 (標題 + Logo) */}
       {showAppConfigModal && canEdit && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-[32px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 pb-4 shrink-0">
               <h3 className="font-black text-xl text-[#1A1A1A] flex items-center">
                 <Settings c="w-6 h-6 mr-2 text-[#D85E38]" /> 系統外觀設定
               </h3>
@@ -6527,6 +6532,7 @@ export default function App() {
                 <XCircle c="w-5 h-5 text-gray-400" />
               </button>
             </div>
+            <div className="overflow-y-auto flex-1 px-6 pb-6">
 
             {/* 標題設定 */}
             <div className="mb-5">
@@ -6663,10 +6669,11 @@ export default function App() {
                 <MapPin c="w-4 h-4 text-[#D85E38]" /> GPS 門店定位設定
               </button>
             </div>
+            </div>
 
             <button
               onClick={() => setShowAppConfigModal(false)}
-              className="mt-3 w-full py-3.5 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors"
+              className="shrink-0 mx-6 mb-6 mt-3 py-3.5 bg-[#1A1A1A] text-white rounded-full font-bold text-sm hover:bg-black transition-colors"
             >
               關閉
             </button>
