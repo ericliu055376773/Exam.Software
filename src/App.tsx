@@ -4683,12 +4683,10 @@ export default function App() {
 
                                               {isPendingProctor && proctorSectionVerified && (
                                                 <div className="mt-3 space-y-3">
-                                                  {empRecord?.userAnswer && (
-                                                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                                                      <span className="text-[10px] text-blue-500 font-bold">員工作答：</span>
-                                                      <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap mt-1">{empRecord.userAnswer}</p>
-                                                    </div>
-                                                  )}
+                                                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                                    <span className="text-[10px] text-blue-500 font-bold">員工作答：</span>
+                                                    <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap mt-1">{empRecord?.userAnswer || '（未填寫）'}</p>
+                                                  </div>
                                                   <div className="p-3 bg-green-50 rounded-xl border border-green-200">
                                                     <span className="text-[10px] text-green-600 font-bold">正確解答：</span>
                                                     <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{exam.correctAnswer || '未設定'}</p>
@@ -4842,7 +4840,8 @@ export default function App() {
                                                     onClick={async () => {
                                                       const newRecords = { ...currentUserData.examRecords };
                                                       for (const exam of pendingProctorExams) {
-                                                        newRecords[exam.id] = { ...newRecords[exam.id], status: 'passed', approver: selectedProctor, timestamp: Date.now() };
+                                                        const storedApprover = currentUserData?.examRecords?.[exam.id]?.approver || selectedProctor || proctorReviewModal.proctorName || '';
+                                                        newRecords[exam.id] = { ...newRecords[exam.id], status: 'passed', approver: storedApprover, timestamp: Date.now() };
                                                       }
                                                       await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords });
                                                       showToast('🎉 考官電腦測驗全部通過！');
