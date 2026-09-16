@@ -4858,10 +4858,18 @@ export default function App() {
                                                   </div>
                                                 )
                                               ) : (
+                                                (() => {
+                                                  const storedApprover = proctorComputerExams.map(e => currentUserData?.examRecords?.[e.id]?.approver).find(a => a) || selectedProctor || '';
+                                                  return (
                                                 <>
                                                   <div className="w-full py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
                                                     ⏳ 已交卷，等待考官輸入密碼評閱中...
                                                   </div>
+                                                  {storedApprover && (
+                                                    <div className="flex items-center justify-center bg-[#FCEEEA]/50 p-2.5 rounded-xl">
+                                                      <span className="text-xs font-bold text-[#D85E38]">📋 考官：{storedApprover}</span>
+                                                    </div>
+                                                  )}
                                                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
                                                     <p className="text-xs font-bold text-gray-500 text-center">🔑 考官請輸入密碼</p>
                                                     <input
@@ -4873,11 +4881,13 @@ export default function App() {
                                                     />
                                                     <button
                                                       onClick={() => {
-                                                        if (!selectedProctor) { showToast('請先選擇考官！'); return; }
-                                                        const proctorEmp = employees.find((emp) => emp.name === selectedProctor);
+                                                        const approverName = storedApprover;
+                                                        if (!approverName) { showToast('找不到考官資訊！'); return; }
+                                                        const proctorEmp = employees.find((emp) => emp.name === approverName);
                                                         if (proctorEmp && proctorEmp.password === proctorReviewModal.password) {
                                                           setProctorSectionVerified(true);
-                                                          setProctorReviewModal({ ...proctorReviewModal, password: '' });
+                                                          setSelectedProctor(approverName);
+                                                          setProctorReviewModal({ ...proctorReviewModal, password: '', proctorName: approverName });
                                                           showToast('✅ 密碼正確！請逐題評閱');
                                                         } else {
                                                           showToast('❌ 密碼錯誤！');
@@ -4890,6 +4900,8 @@ export default function App() {
                                                     </button>
                                                   </div>
                                                 </>
+                                                  );
+                                                })()
                                               )}
                                             </div>
                                           );
