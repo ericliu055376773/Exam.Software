@@ -2673,19 +2673,19 @@ export default function App() {
                               if (canEdit) handleCategoryDrop(cat.id);
                             }}
                             onClick={() => {
-                              // 考試進行中且尚未交卷不能切換分類
+                              // 只在正在計時且有未作答題目時阻止切換
                               if (!canEdit) {
                                 const catExamsForCheck = exams.filter(e => e.categoryId === activeCategoryId);
                                 const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
                                 const timedExamsForCheck = catExamsForCheck.filter(e => !proctorTypeList.includes(e.type));
-                                const proctorExamsForCheck = catExamsForCheck.filter(e => proctorTypeList.includes(e.type));
-                                const allTimedDone = timedExamsForCheck.every(e => { const r = currentUserData?.examRecords?.[e.id]; return r && (r.status === 'passed' || r.status === 'failed' || r === 'passed' || r === 'failed'); });
-                                const allProctorDone = proctorExamsForCheck.every(e => { const r = currentUserData?.examRecords?.[e.id]; return r && (r.status === 'passed' || r.status === 'failed' || r.status === 'pending_proctor' || r === 'passed' || r === 'failed'); });
-                                if (timedSectionStarted && !allTimedDone) {
+                                const proctorComputerExamsForCheck = catExamsForCheck.filter(e => e.type === 'essay');
+                                const hasUnansweredTimed = timedExamsForCheck.some(e => { const r = currentUserData?.examRecords?.[e.id]; return !r || (!r.status && r !== 'passed' && r !== 'failed'); });
+                                const hasUnansweredProctor = proctorComputerExamsForCheck.some(e => { const r = currentUserData?.examRecords?.[e.id]; return !r || (!r.status && r !== 'passed' && r !== 'failed'); });
+                                if (timedSectionStarted && examStartTime && !examTimeUp && hasUnansweredTimed) {
                                   showToast('⚠️ 電腦測驗進行中，請先交卷！');
                                   return;
                                 }
-                                if (proctorSectionStarted && !allProctorDone) {
+                                if (proctorSectionStarted && proctorSectionStartTime && !proctorTimeUp && hasUnansweredProctor) {
                                   showToast('⚠️ 考官電腦測驗進行中，請先交卷！');
                                   return;
                                 }
