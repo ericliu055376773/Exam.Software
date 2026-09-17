@@ -3101,19 +3101,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && timedSectionStarted && !anyTimedFailed && typeof document !== 'undefined' && ReactDOM.createPortal(
-                                            <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#EBF2FF] px-4 py-3 shadow-lg border-b-2 border-blue-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-                                              <span className="text-sm font-black text-[#3B82F6]">考官：{selectedProctor}</span>
-                                              <div className="flex items-center gap-2">
-                                                {examTimeRemaining !== null && (
-                                                  <span className={`text-sm font-black px-4 py-1.5 rounded-full ${examTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : examTimeRemaining < 60000 ? 'bg-red-500 text-white' : 'bg-white text-[#3B82F6]'}`}>
-                                                    {examTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(examTimeRemaining / 60000)}:${String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>,
-                                            document.body
-                                          )}
+{/* 計時器已移至頂層渲染 */}
                                       {timedExams.map((exam) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
@@ -4477,21 +4465,7 @@ export default function App() {
                                         </div>
                                       ) : (
                                         <>
-                                          {!canEdit && proctorSectionStarted && !anyProctorComputerFailed && (() => {
-                                            const anyPendingForTimer = proctorComputerExams.some((e) => currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
-                                            if (anyPendingForTimer) return null;
-                                            return typeof document !== 'undefined' && ReactDOM.createPortal(
-                                            <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#FCEEEA] px-4 py-3 shadow-lg border-b-2 border-orange-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-                                              <span className="text-sm font-black text-[#D85E38]">考官：{selectedProctor}</span>
-                                              {proctorTimeRemaining !== null && (
-                                                <span className={`text-sm font-black px-4 py-1.5 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-white text-[#D85E38]'}`}>
-                                                  {proctorTimeUp ? '⏰ 時間到' : `⏱ ${Math.floor(proctorTimeRemaining / 60000)}:${String(Math.floor((proctorTimeRemaining % 60000) / 1000)).padStart(2, '0')}`}
-                                                </span>
-                                              )}
-                                            </div>,
-                                            document.body
-                                          );
-                                          })()}
+{/* 計時器已移至頂層渲染 */}
                                       {proctorComputerExams.map((exam, idx) => {
                                         const globalIdx = activeExams.indexOf(exam);
                                         const i = globalIdx;
@@ -6730,6 +6704,33 @@ export default function App() {
           onSelect={handlePresetAvatarSelect}
           onClose={() => { setShowAvatarPicker(false); setAvatarPickerTarget(null); }}
         />
+      )}
+
+      {/* 考試計時器 - 固定在螢幕頂部，不受展開收合影響 */}
+      {!canEdit && timedSectionStarted && examStartTime && !examTimeUp && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#EBF2FF] px-4 py-3 shadow-lg border-b-2 border-blue-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+          <span className="text-sm font-black text-[#3B82F6]">💻 電腦測驗｜考官：{selectedProctor}</span>
+          <div className="flex items-center gap-2">
+            {examTimeRemaining !== null && (
+              <span className={`text-sm font-black px-4 py-1.5 rounded-full ${examTimeRemaining < 60000 ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-[#3B82F6]'}`}>
+                ⏱ {Math.floor(examTimeRemaining / 60000)}:{String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}
+              </span>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {!canEdit && proctorSectionStarted && proctorSectionStartTime && !proctorTimeUp && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#FCEEEA] px-4 py-3 shadow-lg border-b-2 border-orange-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+          <span className="text-sm font-black text-[#D85E38]">📝 考官電腦測驗｜考官：{selectedProctor}</span>
+          {proctorTimeRemaining !== null && (
+            <span className={`text-sm font-black px-4 py-1.5 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-white text-[#D85E38]'}`}>
+              ⏱ {Math.floor(proctorTimeRemaining / 60000)}:{String(Math.floor((proctorTimeRemaining % 60000) / 1000)).padStart(2, '0')}
+            </span>
+          )}
+        </div>,
+        document.body
       )}
 
       {/* 時間到彈窗 */}
