@@ -5319,67 +5319,91 @@ export default function App() {
                       <p className="text-[10px] text-gray-400">選擇員工和分類，將該分類所有考題直接標記為通過</p>
                     </div>
                   </div>
-                  {employees.filter(e => e.id !== currentUserData?.id).map((emp) => {
-                    const empCatsNotPassed = categories.filter(cat => {
-                      const catExams = exams.filter(e => e.categoryId === cat.id);
-                      if (catExams.length === 0) return false;
-                      const allPassed = catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
-                      return !allPassed;
+                  {(() => {
+                    const otherEmps = employees.filter(e => e.id !== currentUserData?.id);
+                    const storeGroups = {};
+                    otherEmps.forEach(emp => {
+                      const store = emp.store || '未分配門店';
+                      if (!storeGroups[store]) storeGroups[store] = [];
+                      storeGroups[store].push(emp);
                     });
-                    if (empCatsNotPassed.length === 0) return null;
+                    const storeNames = Object.keys(storeGroups).sort();
+                    let hasAny = false;
                     return (
-                      <div key={emp.id} className="mb-3 bg-[#F7F8FA] p-4 rounded-xl">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
-                          <span className="text-[10px] text-gray-400">{emp.store} · {emp.role}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {empCatsNotPassed.map((cat) => {
-                            const catExams = exams.filter(e => e.categoryId === cat.id);
-                            return (
-                              <button
-                                key={cat.id}
-                                onClick={async () => {
-                                  if (!confirm(`確定要讓 ${emp.name} 的「${cat.name}」所有考題直接通過嗎？`)) return;
-                                  const freshSnap = await getDoc(doc(db, 'employees', emp.id));
-                                  const freshData = freshSnap.exists() ? freshSnap.data() : {};
-                                  const newRecords = { ...(freshData.examRecords || {}) };
-                                  for (const exam of catExams) {
-                                    newRecords[exam.id] = {
-                                      ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}),
-                                      status: 'passed',
-                                      timestamp: Date.now(),
-                                      title: exam.title,
-                                      approver: currentUserData?.name || 'admin',
-                                      score: exam.pointValue ?? 10,
-                                      pointValue: exam.pointValue ?? 10,
-                                      mistakes: newRecords[exam.id]?.mistakes || 0,
-                                    };
-                                  }
-                                  const ca = { ...(freshData.categoryAttempts || {}) };
-                                  if (ca[cat.id]) { delete ca[cat.id].timedRetestRequested; delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].practicalRetestRequested; }
-                                  await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
-                                  showToast(`✅ ${emp.name}「${cat.name}」已直接通過！`);
-                                }}
-                                className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-600 hover:bg-green-200 transition-colors border border-green-200"
-                              >
-                                ✅ {cat.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <>
+                        {storeNames.map(storeName => {
+                          const storeEmps = storeGroups[storeName];
+                          const empsWithUnpassed = storeEmps.filter(emp => {
+                            return categories.some(cat => {
+                              const catExams = exams.filter(e => e.categoryId === cat.id);
+                              if (catExams.length === 0) return false;
+                              return !catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                            });
+                          });
+                          if (empsWithUnpassed.length === 0) return null;
+                          hasAny = true;
+                          return (
+                            <div key={storeName} className="mb-4">
+                              <div className="flex items-center gap-2 mb-3 px-1">
+                                <span className="text-xs font-black text-[#D85E38] bg-[#FCEEEA] px-3 py-1 rounded-full">🏪 {storeName}</span>
+                                <span className="text-[10px] text-gray-400">{empsWithUnpassed.length} 人</span>
+                              </div>
+                              {empsWithUnpassed.map(emp => {
+                                const empCatsNotPassed = categories.filter(cat => {
+                                  const catExams = exams.filter(e => e.categoryId === cat.id);
+                                  if (catExams.length === 0) return false;
+                                  return !catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                                });
+                                return (
+                                  <div key={emp.id} className="mb-3 bg-[#F7F8FA] p-4 rounded-xl">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
+                                      <span className="text-[10px] text-gray-400">{emp.role}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {empCatsNotPassed.map((cat) => {
+                                        const catExams = exams.filter(e => e.categoryId === cat.id);
+                                        return (
+                                          <button
+                                            key={cat.id}
+                                            onClick={async () => {
+                                              if (!confirm(`確定要讓 ${emp.name} 的「${cat.name}」所有考題直接通過嗎？`)) return;
+                                              const freshSnap = await getDoc(doc(db, 'employees', emp.id));
+                                              const freshData = freshSnap.exists() ? freshSnap.data() : {};
+                                              const newRecords = { ...(freshData.examRecords || {}) };
+                                              for (const exam of catExams) {
+                                                newRecords[exam.id] = {
+                                                  ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}),
+                                                  status: 'passed', timestamp: Date.now(), title: exam.title,
+                                                  approver: currentUserData?.name || 'admin',
+                                                  score: exam.pointValue ?? 10, pointValue: exam.pointValue ?? 10,
+                                                  mistakes: newRecords[exam.id]?.mistakes || 0,
+                                                };
+                                              }
+                                              const ca = { ...(freshData.categoryAttempts || {}) };
+                                              if (ca[cat.id]) { delete ca[cat.id].timedRetestRequested; delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].practicalRetestRequested; }
+                                              await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
+                                              showToast(`✅ ${emp.name}「${cat.name}」已直接通過！`);
+                                            }}
+                                            className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-600 hover:bg-green-200 transition-colors border border-green-200"
+                                          >
+                                            ✅ {cat.name}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                        {!hasAny && (
+                          <div className="text-center py-6 text-gray-400 text-xs font-bold">所有員工的分類都已通過 🎉</div>
+                        )}
+                      </>
                     );
-                  })}
-                  {employees.filter(e => e.id !== currentUserData?.id).every(emp => {
-                    return categories.every(cat => {
-                      const catExams = exams.filter(e => e.categoryId === cat.id);
-                      if (catExams.length === 0) return true;
-                      return catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
-                    });
-                  }) && (
-                    <div className="text-center py-6 text-gray-400 text-xs font-bold">所有員工的分類都已通過 🎉</div>
-                  )}
+                  })()}
                 </div>
 
                 {/* 重置員工考試 */}
