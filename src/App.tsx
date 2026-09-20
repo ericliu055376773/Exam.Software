@@ -8,6 +8,7 @@ import {
   onSnapshot,
   addDoc,
   doc,
+  getDoc,
   updateDoc,
   deleteDoc,
   setDoc,
@@ -2138,20 +2139,20 @@ export default function App() {
                           onClick={async () => {
                             const emp = employees.find(e => e.id === rt.empId);
                             if (!emp) return;
+                            // 從 Firebase 讀取最新資料避免覆蓋
+                            const empSnap = await getDoc(doc(db, 'employees', rt.empId));
+                            const freshData = empSnap.exists() ? empSnap.data() : {};
                             const proctorTypeList = ['essay', 'oral', 'practical', 'timed_task'];
                             const catExams = exams.filter(e => e.categoryId === rt.categoryId);
-                            const sectionExams = rt.section === 'timed'
-                              ? catExams.filter(e => !proctorTypeList.includes(e.type))
-                              : catExams.filter(e => proctorTypeList.includes(e.type));
                             const proctorComputerTypes = ['essay'];
                             const proctorPracticalTypes = ['oral', 'practical', 'timed_task'];
-                            const newRecords = { ...(emp.examRecords || {}) };
+                            const newRecords = { ...(freshData.examRecords || {}) };
                             for (const ex of catExams) {
                               if (rt.section === 'timed' && !proctorTypeList.includes(ex.type)) { delete newRecords[ex.id]; }
                               else if (rt.section === 'proctor' && proctorComputerTypes.includes(ex.type)) { delete newRecords[ex.id]; }
                               else if (rt.section === 'practical' && proctorPracticalTypes.includes(ex.type)) { delete newRecords[ex.id]; }
                             }
-                            const ca = { ...(emp.categoryAttempts || {}) };
+                            const ca = { ...(freshData.categoryAttempts || {}) };
                             const cd = ca[rt.categoryId] || {};
                             if (rt.section === 'timed') { delete cd.timedRetestRequested; }
                             else if (rt.section === 'proctor') { delete cd.proctorRetestRequested; }
@@ -4285,7 +4286,12 @@ export default function App() {
                                     );
                                       })}
                                       {!canEdit && !examTimeUp && showTimedSection === 'timed' && (() => {
-                                        const allAnswered = timedExams.every((e) => currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '');
+                                        const allAnswered = timedExams.every((e) => {
+                                          const rec = currentUserData?.examRecords?.[e.id];
+                                          const alreadyDone = rec && (rec.status === 'passed' || rec.status === 'failed' || rec === 'passed' || rec === 'failed');
+                                          if (alreadyDone) return true;
+                                          return currentAnswers[e.id] !== undefined && String(currentAnswers[e.id]).trim() !== '';
+                                        });
                                         const anyFailed2 = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
                                         const allDone = timedExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (rec === 'passed' || rec === 'failed' || (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed'))); });
                                         if (anyFailed2) {
@@ -4321,7 +4327,12 @@ export default function App() {
                                           <button
                                             onClick={async () => {
                                               if (!allAnswered) {
-                                                const firstUnanswered = timedExams.find((e) => currentAnswers[e.id] === undefined || String(currentAnswers[e.id]).trim() === '');
+                                                const firstUnanswered = timedExams.find((e) => {
+                                                  const rec = currentUserData?.examRecords?.[e.id];
+                                                  const alreadyDone = rec && (rec.status === 'passed' || rec.status === 'failed' || rec === 'passed' || rec === 'failed');
+                                                  if (alreadyDone) return false;
+                                                  return currentAnswers[e.id] === undefined || String(currentAnswers[e.id]).trim() === '';
+                                                });
                                                 if (firstUnanswered) {
                                                   const el = document.getElementById(`exam-${firstUnanswered.id}`);
                                                   if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-2', 'ring-red-400', 'ring-offset-2'); setTimeout(() => el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2'), 2000); }
@@ -4334,6 +4345,16 @@ export default function App() {
                                               // 先檢查所有答案
                                               const results = [];
                                               for (const exam of timedExams) {
+                                                const existingRec = newRecords[exam.id];
+                                                if (existingRec && (existingRec.status === 'passed' || existingRec === 'passed')) {
+                                                  results.push({ exam, correct: true, skip: true });
+                                                  continue;
+                                                }
+                                                if (existingRec && (existingRec.status === 'failed' || existingRec === 'failed')) {
+                                                  allCorrect = false;
+                                                  results.push({ exam, correct: false, skip: true });
+                                                  continue;
+                                                }
                                                 const userAnswer = currentAnswers[exam.id];
                                                 let correct = false;
                                                 if (exam.type === 'tf' || exam.type === 'mc') correct = userAnswer === exam.correctAnswer;
@@ -4344,7 +4365,8 @@ export default function App() {
                                                 results.push({ exam, correct });
                                               }
                                               // 個別記錄每題對錯，但只要有錯就需要整份重考
-                                              for (const { exam, correct } of results) {
+                                              for (const { exam, correct, skip } of results) {
+                                                if (skip) continue;
                                                 const pv = exam.pointValue ?? 10;
                                                 const pm = newRecords[exam.id]?.mistakes || 0;
                                                 const ua = currentAnswers[exam.id] || '';
@@ -4898,7 +4920,12 @@ export default function App() {
                                           const writableTypes = ['fill', 'essay'];
                                           const writableExams = proctorExams.filter((e) => writableTypes.includes(e.type));
                                           const nonWritableExams = proctorExams.filter((e) => !writableTypes.includes(e.type));
-                                          const allWritten = writableExams.every((e) => currentAnswers[e.id]?.trim());
+                                          const allWritten = writableExams.every((e) => {
+                                            const rec = currentUserData?.examRecords?.[e.id];
+                                            const alreadyDone = rec && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor');
+                                            if (alreadyDone) return true;
+                                            return currentAnswers[e.id]?.trim();
+                                          });
                                           const allNonWritableDone = nonWritableExams.every((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec && (typeof rec === 'object' && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor')); });
                                           // 筆答題都填完就可以交卷（口述/實作/計時題標記為待考官）
                                           const canSubmit = allWritten;
@@ -4907,7 +4934,12 @@ export default function App() {
                                             <button
                                               onClick={async () => {
                                                 if (!canSubmit) {
-                                                  const firstUnanswered = writableExams.find((e) => !currentAnswers[e.id]?.trim());
+                                                  const firstUnanswered = writableExams.find((e) => {
+                                                    const rec = currentUserData?.examRecords?.[e.id];
+                                                    const alreadyDone = rec && (rec.status === 'passed' || rec.status === 'failed' || rec.status === 'pending_proctor');
+                                                    if (alreadyDone) return false;
+                                                    return !currentAnswers[e.id]?.trim();
+                                                  });
                                                   if (firstUnanswered) {
                                                     const el = document.getElementById(`exam-${firstUnanswered.id}`);
                                                     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-2', 'ring-red-400', 'ring-offset-2'); setTimeout(() => el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2'), 2000); }
@@ -5276,6 +5308,80 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* 直接通過分類 */}
+                <div className="bg-white p-6 rounded-[24px] soft-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 c="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-[#1A1A1A] text-sm">直接通過分類</h3>
+                      <p className="text-[10px] text-gray-400">選擇員工和分類，將該分類所有考題直接標記為通過</p>
+                    </div>
+                  </div>
+                  {employees.filter(e => e.id !== currentUserData?.id).map((emp) => {
+                    const empCatsNotPassed = categories.filter(cat => {
+                      const catExams = exams.filter(e => e.categoryId === cat.id);
+                      if (catExams.length === 0) return false;
+                      const allPassed = catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                      return !allPassed;
+                    });
+                    if (empCatsNotPassed.length === 0) return null;
+                    return (
+                      <div key={emp.id} className="mb-3 bg-[#F7F8FA] p-4 rounded-xl">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
+                          <span className="text-[10px] text-gray-400">{emp.store} · {emp.role}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {empCatsNotPassed.map((cat) => {
+                            const catExams = exams.filter(e => e.categoryId === cat.id);
+                            return (
+                              <button
+                                key={cat.id}
+                                onClick={async () => {
+                                  if (!confirm(`確定要讓 ${emp.name} 的「${cat.name}」所有考題直接通過嗎？`)) return;
+                                  const freshSnap = await getDoc(doc(db, 'employees', emp.id));
+                                  const freshData = freshSnap.exists() ? freshSnap.data() : {};
+                                  const newRecords = { ...(freshData.examRecords || {}) };
+                                  for (const exam of catExams) {
+                                    newRecords[exam.id] = {
+                                      ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}),
+                                      status: 'passed',
+                                      timestamp: Date.now(),
+                                      title: exam.title,
+                                      approver: currentUserData?.name || 'admin',
+                                      score: exam.pointValue ?? 10,
+                                      pointValue: exam.pointValue ?? 10,
+                                      mistakes: newRecords[exam.id]?.mistakes || 0,
+                                    };
+                                  }
+                                  const ca = { ...(freshData.categoryAttempts || {}) };
+                                  if (ca[cat.id]) { delete ca[cat.id].timedRetestRequested; delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].practicalRetestRequested; }
+                                  await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
+                                  showToast(`✅ ${emp.name}「${cat.name}」已直接通過！`);
+                                }}
+                                className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-600 hover:bg-green-200 transition-colors border border-green-200"
+                              >
+                                ✅ {cat.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {employees.filter(e => e.id !== currentUserData?.id).every(emp => {
+                    return categories.every(cat => {
+                      const catExams = exams.filter(e => e.categoryId === cat.id);
+                      if (catExams.length === 0) return true;
+                      return catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                    });
+                  }) && (
+                    <div className="text-center py-6 text-gray-400 text-xs font-bold">所有員工的分類都已通過 🎉</div>
+                  )}
+                </div>
+
                 {/* 重置員工考試 */}
                 <div className="bg-white p-6 rounded-[24px] soft-shadow">
                   <div className="flex items-center gap-3 mb-4">
@@ -5310,10 +5416,12 @@ export default function App() {
                               <button
                                 onClick={async () => {
                                   if (!confirm(`確定要重置 ${emp.name} 的「${cat.name}」所有考試紀錄嗎？`)) return;
-                                  const newRecords = { ...emp.examRecords };
+                                  const freshSnap = await getDoc(doc(db, 'employees', emp.id));
+                                  const freshData = freshSnap.exists() ? freshSnap.data() : {};
+                                  const newRecords = { ...(freshData.examRecords || {}) };
                                   catExams.forEach(e => { delete newRecords[e.id]; });
-                                  const ca = emp.categoryAttempts || {};
-                                  if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; }
+                                  const ca = { ...(freshData.categoryAttempts || {}) };
+                                  if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].timedRetestRequested; delete ca[cat.id].practicalRetestRequested; }
                                   await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
                                   showToast(`已重置 ${emp.name}「${cat.name}」的考試紀錄`);
                                 }}
@@ -5325,9 +5433,11 @@ export default function App() {
                                 <button
                                   onClick={async () => {
                                     if (!confirm(`確定要重置 ${emp.name} 的「${cat.name} - 考官電腦測驗」紀錄嗎？`)) return;
-                                    const newRecords = { ...emp.examRecords };
+                                    const freshSnap2 = await getDoc(doc(db, 'employees', emp.id));
+                                    const freshData2 = freshSnap2.exists() ? freshSnap2.data() : {};
+                                    const newRecords = { ...(freshData2.examRecords || {}) };
                                     catProctorComputer.forEach(e => { delete newRecords[e.id]; });
-                                    const ca = emp.categoryAttempts || {};
+                                    const ca = { ...(freshData2.categoryAttempts || {}) };
                                     if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; }
                                     await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
                                     showToast(`已重置 ${emp.name}「${cat.name} - 考官電腦測驗」`);
@@ -5341,7 +5451,9 @@ export default function App() {
                                 <button
                                   onClick={async () => {
                                     if (!confirm(`確定要重置 ${emp.name} 的「${cat.name} - 考官實作測驗」紀錄嗎？`)) return;
-                                    const newRecords = { ...emp.examRecords };
+                                    const freshSnap3 = await getDoc(doc(db, 'employees', emp.id));
+                                    const freshData3 = freshSnap3.exists() ? freshSnap3.data() : {};
+                                    const newRecords = { ...(freshData3.examRecords || {}) };
                                     catProctorPractical.forEach(e => { delete newRecords[e.id]; });
                                     await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords });
                                     showToast(`已重置 ${emp.name}「${cat.name} - 考官實作測驗」`);
