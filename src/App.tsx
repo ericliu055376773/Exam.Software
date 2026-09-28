@@ -3073,6 +3073,7 @@ export default function App() {
                                         <h4 className={`font-black text-sm ${allTimedPassed ? 'text-green-600' : anyTimedFailed ? 'text-red-500' : 'text-[#3B82F6]'}`}>電腦測驗</h4>
                                         <p className={`text-[10px] font-bold ${allTimedPassed ? 'text-green-500' : anyTimedFailed ? 'text-red-400' : 'text-[#3B82F6]/60'}`}>
                                           {timedExams.length} 題・{allTimedPassed ? '已通過' : anyTimedFailed ? '未通過・需重考' : `自動批改${(activeCategoryData?.timeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.timeLimit} 分鐘` : '・計時'}`}
+                                          {(() => { const ca = currentUserData?.categoryAttempts || {}; const tc = ca[activeCategoryId]?.timed || 0; return tc > 1 ? `・已考${tc}次` : ''; })()}
                                         </p>
                                       </div>
                                     </div>
@@ -4478,6 +4479,7 @@ export default function App() {
                                         <h4 className={`font-black text-sm ${allProctorComputerPassed ? 'text-green-600' : anyProctorComputerFailed ? 'text-red-500' : 'text-[#D85E38]'}`}>考官電腦測驗</h4>
                                         <p className={`text-[10px] font-bold ${allProctorComputerPassed ? 'text-green-500' : anyProctorComputerFailed ? 'text-red-400' : 'text-[#D85E38]/60'}`}>
                                           {proctorComputerExams.length} 題・{allProctorComputerPassed ? '已通過' : anyProctorComputerFailed ? '未通過・需重考' : `需考官${(activeCategoryData?.proctorTimeLimit ?? 0) > 0 ? `・限時 ${activeCategoryData.proctorTimeLimit} 分鐘` : ''}`}
+                                          {(() => { const ca = currentUserData?.categoryAttempts || {}; const pc = ca[activeCategoryId]?.proctor || 0; return pc > 1 ? `・已考${pc}次` : ''; })()}
                                         </p>
                                       </div>
                                     </div>
@@ -4698,8 +4700,18 @@ export default function App() {
                                               {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{exam.description}</p>}
 
                                               {!canEdit && isPendingProctor && !proctorSectionVerified && (
-                                                <div className="mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
-                                                  <p className="text-xs text-orange-600 font-bold">等待考官審核中...</p>
+                                                <div className="mt-3 space-y-3">
+                                                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                                    <span className="text-[10px] text-blue-500 font-bold">員工作答：</span>
+                                                    <p className="text-sm text-gray-800 font-bold whitespace-pre-wrap mt-1">{empRecord?.userAnswer || '（未填寫）'}</p>
+                                                  </div>
+                                                  <div className="p-3 bg-green-50 rounded-xl border border-green-200">
+                                                    <span className="text-[10px] text-green-600 font-bold">正確解答：</span>
+                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{exam.correctAnswer || '未設定'}</p>
+                                                  </div>
+                                                  <div className="p-2 bg-orange-50 rounded-xl border border-orange-200 text-center">
+                                                    <p className="text-[10px] text-orange-600 font-bold">⏳ 等待考官輸入密碼評閱</p>
+                                                  </div>
                                                 </div>
                                               )}
 
@@ -5075,6 +5087,7 @@ export default function App() {
                                         <h4 className={`font-black text-sm ${allPracticalPassed ? 'text-green-600' : anyPracticalFailed ? 'text-red-500' : 'text-[#7C3AED]'}`}>考官實作測驗</h4>
                                         <p className={`text-[10px] font-bold ${allPracticalPassed ? 'text-green-500' : anyPracticalFailed ? 'text-red-400' : 'text-[#7C3AED]/60'}`}>
                                           {proctorPracticalExams.length} 題・{allPracticalPassed ? '已通過' : anyPracticalFailed ? '未通過・需重考' : '現場評分・不計時'}
+                                          {(() => { const ca = currentUserData?.categoryAttempts || {}; const prc = ca[activeCategoryId]?.practical || 0; return prc > 1 ? `・已考${prc}次` : ''; })()}
                                         </p>
                                       </div>
                                     </div>
