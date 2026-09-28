@@ -683,6 +683,10 @@ export default function App() {
   // === 自動偵測新版本 ===
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
+  const [expandedPassEmpId, setExpandedPassEmpId] = useState(null);
+  const [expandedResetEmpId, setExpandedResetEmpId] = useState(null);
+  const [expandedPassStore, setExpandedPassStore] = useState(null);
+  const [expandedResetStore, setExpandedResetStore] = useState(null);
   useEffect(() => {
     let initialHash = null;
     const checkForUpdate = async () => {
@@ -717,7 +721,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   // === App 設定 (標題、Logo) ===
-  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true, timeUpMessage: '考試時間已結束，系統已自動交卷。' });
+  const [appConfig, setAppConfig] = useState({ title: '學習系統', logoUrl: '', examGradingTitle: '考試評分紀錄', marqueeText: '依照題型指示進行作答', retestApprovalRoles: [], gpsEnabled: true, timeUpMessage: '考試時間已結束，系統已自動交卷。', retakeRequiresApproval: true });
   const [editAppTitle, setEditAppTitle] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showAppConfigModal, setShowAppConfigModal] = useState(false);
@@ -3740,7 +3744,7 @@ export default function App() {
                               </div>
 
                               <div className="bg-white rounded-[16px] p-5 shadow-sm border border-gray-50">
-                                <h3 className="font-black text-[#1A1A1A] text-base mb-6 leading-relaxed text-left">
+                                <h3 className="font-black text-[#1A1A1A] text-base mb-6 leading-relaxed text-left whitespace-pre-wrap">
                                   {String(exam.title)}
                                 </h3>
                                 {exam.description && (
@@ -4298,28 +4302,78 @@ export default function App() {
                                             const catAttempts = currentUserData?.categoryAttempts || {};
                                             const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
                                             const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
-                                            if (timedRetestRequested) {
+                                            const retakeHistory = catAttempts[activeCategoryId]?.timedRetakeHistory || [];
+                                            const historyUI = retakeHistory.length > 0 ? (
+                                              <div className="w-full mt-3 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                                                <button onClick={(e) => { const el = e.currentTarget.nextSibling; if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }} className="w-full flex items-center justify-between p-3 text-xs font-bold text-gray-500 hover:bg-gray-100">
+                                                  <span>📋 考試紀錄（{retakeHistory.length} 次重考）</span>
+                                                  <ChevronRight c="w-3 h-3 text-gray-400 rotate-90" />
+                                                </button>
+                                                <div style={{ display: 'none' }} className="px-3 pb-3 space-y-1.5">
+                                                  {retakeHistory.map((h, hi) => (
+                                                    <div key={hi} className="flex items-center justify-between bg-white p-2 rounded-lg text-[10px]">
+                                                      <span className="font-bold text-gray-600">第 {h.attempt} 次</span>
+                                                      <span className="text-gray-400">{new Date(h.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                      <span className="text-gray-400">{h.approver}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            ) : null;
+                                            if (appConfig.retakeRequiresApproval !== false) {
+                                              if (timedRetestRequested) {
+                                                return (
+                                                  <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                                    ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
+                                                  </div>
+                                                );
+                                              }
                                               return (
-                                                <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
-                                                  ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
+                                                <div className="mt-4">
+                                                  {historyUI}
+                                                  <button
+                                                    onClick={async () => {
+                                                      const ca = currentUserData?.categoryAttempts || {};
+                                                      const cd = ca[activeCategoryId] || {};
+                                                      cd.timedRetestRequested = true;
+                                                      ca[activeCategoryId] = cd;
+                                                      await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
+                                                      showToast('已申請電腦測驗重考，請等待主管核准！');
+                                                    }}
+                                                    className="w-full mt-3 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
+                                                  >
+                                                    🔄 申請重新測驗（已考 {timedAttemptCount} 次）
+                                                  </button>
+                                                </div>
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="mt-4">
+                                                  {historyUI}
+                                                  <button
+                                                    onClick={async () => {
+                                                      const freshSnap = await getDoc(doc(db, 'employees', currentUserData.id));
+                                                    const freshData = freshSnap.exists() ? freshSnap.data() : {};
+                                                    const newRecords = { ...(freshData.examRecords || {}) };
+                                                    for (const exam of timedExams) { delete newRecords[exam.id]; }
+                                                    const ca = { ...(freshData.categoryAttempts || {}) };
+                                                    const cd = ca[activeCategoryId] || {};
+                                                    cd.timed = (cd.timed || 0) + 1;
+                                                    const history = cd.timedRetakeHistory || [];
+                                                    history.push({ time: new Date().toISOString(), attempt: cd.timed, approver: selectedProctor || '自行重考' });
+                                                    cd.timedRetakeHistory = history;
+                                                    ca[activeCategoryId] = cd;
+                                                    await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: newRecords, categoryAttempts: ca });
+                                                    setShowTimedSection(false); setTimedSectionStarted(false); setExamStarted(false); setExamStartTime(null); setExamTimeRemaining(null); setExamTimeUp(false); setCurrentAnswers({});
+                                                    showToast('🔄 已重置，請重新開始測驗');
+                                                  }}
+                                                  className="w-full mt-4 py-4 bg-[#3B82F6] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#2563EB] active:scale-95"
+                                                >
+                                                    🔄 重新測驗（已考 {timedAttemptCount} 次）
+                                                  </button>
                                                 </div>
                                               );
                                             }
-                                            return (
-                                              <button
-                                                onClick={async () => {
-                                                  const ca = currentUserData?.categoryAttempts || {};
-                                                  const cd = ca[activeCategoryId] || {};
-                                                  cd.timedRetestRequested = true;
-                                                  ca[activeCategoryId] = cd;
-                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
-                                                  showToast('已申請電腦測驗重考，請等待主管核准！');
-                                                }}
-                                                className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
-                                              >
-                                                🔄 申請重新測驗（已考 {timedAttemptCount} 次）
-                                              </button>
-                                            );
                                           }
                                         if (allDone) { return null; }
                                         const allAnsweredForSubmit = allAnswered;
@@ -4394,35 +4448,7 @@ export default function App() {
                                           </button>
                                         );
                                       })()}
-                                      {!canEdit && examTimeUp && (() => {
-                                        const anyFailed3 = timedExams.some((e) => { const rec = currentUserData?.examRecords?.[e.id]; return rec?.status === 'failed' || rec === 'failed'; });
-                                        if (!anyFailed3) return null;
-                                        const catAttempts = currentUserData?.categoryAttempts || {};
-                                        const timedAttemptCount = catAttempts[activeCategoryId]?.timed || 1;
-                                        const timedRetestRequested = catAttempts[activeCategoryId]?.timedRetestRequested;
-                                        if (timedRetestRequested) {
-                                          return (
-                                            <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
-                                              ⏳ 已申請重考（第 {timedAttemptCount + 1} 次），等待主管核准...
-                                            </div>
-                                          );
-                                        }
-                                        return (
-                                          <button
-                                            onClick={async () => {
-                                              const ca = currentUserData?.categoryAttempts || {};
-                                              const cd = ca[activeCategoryId] || {};
-                                              cd.timedRetestRequested = true;
-                                              ca[activeCategoryId] = cd;
-                                              await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
-                                              showToast('已申請電腦測驗重考，請等待主管核准！');
-                                            }}
-                                            className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
-                                          >
-                                            🔄 申請重新測驗（已考 {timedAttemptCount} 次）
-                                          </button>
-                                        );
-                                      })()}
+                                      {/* 時間到的重考按鈕邏輯同上 - 由 anyFailed2 區塊已處理 */}
                                         </>
                                       )}
                                     </div>
@@ -4668,7 +4694,7 @@ export default function App() {
                                               {isPendingProctor && <span className="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold">⏳ 待考官</span>}
                                             </div>
                                             <div className="bg-white p-5 rounded-[20px] shadow-sm border border-gray-100">
-                                              <h3 className="text-lg font-black text-[#1A1A1A] mb-3">{exam.title}</h3>
+                                              <h3 className="text-lg font-black text-[#1A1A1A] mb-3 whitespace-pre-wrap">{exam.title}</h3>
                                               {exam.description && <p className="text-xs text-gray-500 font-bold mb-3 bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{exam.description}</p>}
 
                                               {!canEdit && isPendingProctor && !proctorSectionVerified && (
@@ -4905,14 +4931,53 @@ export default function App() {
 
                                         // 有失敗 - 顯示重考申請（優先於交卷按鈕）
                                         if (anyFailed) {
-                                          if (proctorRetestRequested) {
-                                            return <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">⏳ 已申請考官測驗重考（第 {proctorAttempts + 1} 次），等待主管核准...</div>;
+                                          const proctorHistory = cd.proctorRetakeHistory || [];
+                                          const proctorHistUI = proctorHistory.length > 0 ? (
+                                            <div className="w-full mt-3 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                                              <button onClick={(e) => { const el = e.currentTarget.nextSibling; if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }} className="w-full flex items-center justify-between p-3 text-xs font-bold text-gray-500 hover:bg-gray-100">
+                                                <span>📋 考試紀錄（{proctorHistory.length} 次重考）</span>
+                                                <ChevronRight c="w-3 h-3 text-gray-400 rotate-90" />
+                                              </button>
+                                              <div style={{ display: 'none' }} className="px-3 pb-3 space-y-1.5">
+                                                {proctorHistory.map((h, hi) => (
+                                                  <div key={hi} className="flex items-center justify-between bg-white p-2 rounded-lg text-[10px]">
+                                                    <span className="font-bold text-gray-600">第 {h.attempt} 次</span>
+                                                    <span className="text-gray-400">{new Date(h.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <span className="text-gray-400">{h.approver}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          ) : null;
+                                          if (appConfig.retakeRequiresApproval !== false) {
+                                            if (proctorRetestRequested) {
+                                              return <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">⏳ 已申請考官測驗重考（第 {proctorAttempts + 1} 次），等待主管核准...</div>;
+                                            }
+                                            return (
+                                              <div className="mt-4">{proctorHistUI}
+                                                <button onClick={async () => { const ca2 = currentUserData?.categoryAttempts || {}; const cd2 = ca2[activeCategoryId] || {}; cd2.proctorRetestRequested = true; ca2[activeCategoryId] = cd2; await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca2 }); showToast('已申請考官測驗重考，請等待主管核准！'); }} className="w-full mt-3 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95">
+                                                  🔄 申請考官測驗重考（已考 {proctorAttempts} 次）
+                                                </button>
+                                              </div>
+                                            );
+                                          } else {
+                                            return (
+                                              <div className="mt-4">{proctorHistUI}
+                                                <button onClick={async () => {
+                                                  const fs = await getDoc(doc(db, 'employees', currentUserData.id)); const fd = fs.exists() ? fs.data() : {};
+                                                  const nr = { ...(fd.examRecords || {}) }; const proctorComputerTypes2 = ['essay']; exams.filter(e => e.categoryId === activeCategoryId && proctorComputerTypes2.includes(e.type)).forEach(e => { delete nr[e.id]; });
+                                                  const ca2 = { ...(fd.categoryAttempts || {}) }; const cd2 = ca2[activeCategoryId] || {}; cd2.proctor = (cd2.proctor || 0) + 1;
+                                                  const hist = cd2.proctorRetakeHistory || []; hist.push({ time: new Date().toISOString(), attempt: cd2.proctor, approver: selectedProctor || '自行重考' }); cd2.proctorRetakeHistory = hist;
+                                                  ca2[activeCategoryId] = cd2;
+                                                  await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: nr, categoryAttempts: ca2 });
+                                                  setShowProctorSection(false); setProctorSectionStarted(false); setProctorSectionVerified(false); setCurrentAnswers({});
+                                                  showToast('🔄 已重置，請重新開始考官測驗');
+                                                }} className="w-full mt-3 py-4 bg-[#D85E38] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#C25330] active:scale-95">
+                                                  🔄 重新測驗（已考 {proctorAttempts} 次）
+                                                </button>
+                                              </div>
+                                            );
                                           }
-                                          return (
-                                            <button onClick={async () => { const ca2 = currentUserData?.categoryAttempts || {}; const cd2 = ca2[activeCategoryId] || {}; cd2.proctorRetestRequested = true; ca2[activeCategoryId] = cd2; await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca2 }); showToast('已申請考官測驗重考，請等待主管核准！'); }} className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95">
-                                              🔄 申請考官測驗重考（已考 {proctorAttempts} 次）
-                                            </button>
-                                          );
                                         }
 
                                         // 尚未全部完成 - 顯示交卷按鈕
@@ -5156,7 +5221,7 @@ export default function App() {
                                               {isFailed && <span className="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full font-bold">✗ 未通過</span>}
                                             </div>
                                             <div className="bg-white p-5 rounded-[16px] shadow-sm border border-gray-50">
-                                              <h3 className="font-black text-[#1A1A1A] text-base mb-4 text-left">{exam.title}</h3>
+                                              <h3 className="font-black text-[#1A1A1A] text-base mb-4 text-left whitespace-pre-wrap">{exam.title}</h3>
                                               {exam.description && <p className="text-sm text-gray-500 mb-3 text-left bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{exam.description}</p>}
                                               {!canEdit && !isPassed && !isFailed && (
                                                 <div className="mt-3 space-y-2">
@@ -5192,29 +5257,57 @@ export default function App() {
                                         const catAttempts = currentUserData?.categoryAttempts || {};
                                         const practicalAttemptCount = catAttempts[activeCategoryId]?.practical || 1;
                                         const practicalRetestRequested = catAttempts[activeCategoryId]?.practicalRetestRequested;
-                                        if (practicalRetestRequested) {
+                                        const practHistory = catAttempts[activeCategoryId]?.practicalRetakeHistory || [];
+                                        const practHistUI = practHistory.length > 0 ? (
+                                          <div className="w-full mt-3 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                                            <button onClick={(e) => { const el = e.currentTarget.nextSibling; if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }} className="w-full flex items-center justify-between p-3 text-xs font-bold text-gray-500 hover:bg-gray-100">
+                                              <span>📋 考試紀錄（{practHistory.length} 次重考）</span>
+                                              <ChevronRight c="w-3 h-3 text-gray-400 rotate-90" />
+                                            </button>
+                                            <div style={{ display: 'none' }} className="px-3 pb-3 space-y-1.5">
+                                              {practHistory.map((h, hi) => (
+                                                <div key={hi} className="flex items-center justify-between bg-white p-2 rounded-lg text-[10px]">
+                                                  <span className="font-bold text-gray-600">第 {h.attempt} 次</span>
+                                                  <span className="text-gray-400">{new Date(h.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                  <span className="text-gray-400">{h.approver}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ) : null;
+                                        if (appConfig.retakeRequiresApproval !== false) {
+                                          if (practicalRetestRequested) {
+                                            return (
+                                              <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
+                                                ⏳ 已申請重考（第 {practicalAttemptCount + 1} 次），等待主管核准...
+                                              </div>
+                                            );
+                                          }
                                           return (
-                                            <div className="w-full mt-4 py-4 bg-orange-100 text-orange-600 rounded-xl font-bold text-sm text-center">
-                                              ⏳ 已申請重考（第 {practicalAttemptCount + 1} 次），等待主管核准...
+                                            <div className="mt-4">{practHistUI}
+                                              <button onClick={async () => { const ca = currentUserData?.categoryAttempts || {}; const cd = ca[activeCategoryId] || {}; cd.practicalRetestRequested = true; cd.practical = (cd.practical || 0) + 1; ca[activeCategoryId] = cd; await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca }); showToast('已申請考官實作測驗重考，請等待主管核准！'); }} className="w-full mt-3 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95">
+                                                🔄 申請重新測驗（已考 {practicalAttemptCount} 次）
+                                              </button>
+                                            </div>
+                                          );
+                                        } else {
+                                          return (
+                                            <div className="mt-4">{practHistUI}
+                                              <button onClick={async () => {
+                                                const fs = await getDoc(doc(db, 'employees', currentUserData.id)); const fd = fs.exists() ? fs.data() : {};
+                                                const nr = { ...(fd.examRecords || {}) }; const practTypes = ['oral','practical','timed_task']; exams.filter(e => e.categoryId === activeCategoryId && practTypes.includes(e.type)).forEach(e => { delete nr[e.id]; });
+                                                const ca = { ...(fd.categoryAttempts || {}) }; const cd = ca[activeCategoryId] || {}; cd.practical = (cd.practical || 0) + 1;
+                                                const hist = cd.practicalRetakeHistory || []; hist.push({ time: new Date().toISOString(), attempt: cd.practical, approver: selectedProctor || '自行重考' }); cd.practicalRetakeHistory = hist;
+                                                ca[activeCategoryId] = cd;
+                                                await updateDoc(doc(db, 'employees', currentUserData.id), { examRecords: nr, categoryAttempts: ca });
+                                                setShowTimedSection(false); setSelectedProctor(''); setCurrentAnswers({});
+                                                showToast('🔄 已重置，請重新開始實作測驗');
+                                              }} className="w-full mt-3 py-4 bg-[#7C3AED] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-[#6D28D9] active:scale-95">
+                                                🔄 重新測驗（已考 {practicalAttemptCount} 次）
+                                              </button>
                                             </div>
                                           );
                                         }
-                                        return (
-                                          <button
-                                            onClick={async () => {
-                                              const ca = currentUserData?.categoryAttempts || {};
-                                              const cd = ca[activeCategoryId] || {};
-                                              cd.practicalRetestRequested = true;
-                                              cd.practical = (cd.practical || 0) + 1;
-                                              ca[activeCategoryId] = cd;
-                                              await updateDoc(doc(db, 'employees', currentUserData.id), { categoryAttempts: ca });
-                                              showToast('已申請考官實作測驗重考，請等待主管核准！');
-                                            }}
-                                            className="w-full mt-4 py-4 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-red-600 active:scale-95"
-                                          >
-                                            🔄 申請重新測驗（已考 {practicalAttemptCount} 次）
-                                          </button>
-                                        );
                                       })()}
                                         </>
                                       )}
@@ -5343,55 +5436,59 @@ export default function App() {
                           if (empsWithUnpassed.length === 0) return null;
                           hasAny = true;
                           return (
-                            <div key={storeName} className="mb-4">
-                              <div className="flex items-center gap-2 mb-3 px-1">
-                                <span className="text-xs font-black text-[#D85E38] bg-[#FCEEEA] px-3 py-1 rounded-full">🏪 {storeName}</span>
-                                <span className="text-[10px] text-gray-400">{empsWithUnpassed.length} 人</span>
-                              </div>
-                              {empsWithUnpassed.map(emp => {
+                            <div key={storeName} className="mb-3">
+                              <button onClick={() => setExpandedPassStore(expandedPassStore === storeName ? null : storeName)} className="w-full flex items-center justify-between bg-[#FCEEEA] px-4 py-2.5 rounded-xl hover:bg-[#F9E2DB] transition-colors">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-[#D85E38]">🏪 {storeName}</span>
+                                  <span className="text-[10px] text-gray-400">{empsWithUnpassed.length} 人</span>
+                                </div>
+                                <ChevronRight c={`w-4 h-4 text-[#D85E38] transition-transform ${expandedPassStore === storeName ? 'rotate-90' : ''}`} />
+                              </button>
+                              {expandedPassStore === storeName && empsWithUnpassed.map(emp => {
                                 const empCatsNotPassed = categories.filter(cat => {
-                                  const catExams = exams.filter(e => e.categoryId === cat.id);
-                                  if (catExams.length === 0) return false;
-                                  return !catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
+                                  const catExams2 = exams.filter(e => e.categoryId === cat.id);
+                                  if (catExams2.length === 0) return false;
+                                  return !catExams2.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
                                 });
+                                const isExp = expandedPassEmpId === emp.id;
                                 return (
-                                  <div key={emp.id} className="mb-3 bg-[#F7F8FA] p-4 rounded-xl">
-                                    <div className="flex items-center justify-between mb-2">
+                                  <div key={emp.id} className="mb-2 bg-[#F7F8FA] rounded-xl overflow-hidden">
+                                    <button onClick={() => setExpandedPassEmpId(isExp ? null : emp.id)} className="w-full flex items-center justify-between p-3 hover:bg-gray-100">
                                       <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
-                                      <span className="text-[10px] text-gray-400">{emp.role}</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {empCatsNotPassed.map((cat) => {
-                                        const catExams = exams.filter(e => e.categoryId === cat.id);
-                                        return (
-                                          <button
-                                            key={cat.id}
-                                            onClick={async () => {
-                                              if (!confirm(`確定要讓 ${emp.name} 的「${cat.name}」所有考題直接通過嗎？`)) return;
-                                              const freshSnap = await getDoc(doc(db, 'employees', emp.id));
-                                              const freshData = freshSnap.exists() ? freshSnap.data() : {};
-                                              const newRecords = { ...(freshData.examRecords || {}) };
-                                              for (const exam of catExams) {
-                                                newRecords[exam.id] = {
-                                                  ...(typeof newRecords[exam.id] === 'object' ? newRecords[exam.id] : {}),
-                                                  status: 'passed', timestamp: Date.now(), title: exam.title,
-                                                  approver: currentUserData?.name || 'admin',
-                                                  score: exam.pointValue ?? 10, pointValue: exam.pointValue ?? 10,
-                                                  mistakes: newRecords[exam.id]?.mistakes || 0,
-                                                };
-                                              }
-                                              const ca = { ...(freshData.categoryAttempts || {}) };
-                                              if (ca[cat.id]) { delete ca[cat.id].timedRetestRequested; delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].practicalRetestRequested; }
-                                              await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
-                                              showToast(`✅ ${emp.name}「${cat.name}」已直接通過！`);
-                                            }}
-                                            className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-600 hover:bg-green-200 transition-colors border border-green-200"
-                                          >
-                                            ✅ {cat.name}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-gray-400">{emp.role}・{empCatsNotPassed.length} 待通過</span>
+                                        <ChevronRight c={`w-4 h-4 text-gray-400 transition-transform ${isExp ? 'rotate-90' : ''}`} />
+                                      </div>
+                                    </button>
+                                    {isExp && (
+                                      <div className="px-3 pb-3 space-y-2">
+                                        {empCatsNotPassed.map((cat) => {
+                                          const ce = exams.filter(e => e.categoryId === cat.id);
+                                          const timedE = ce.filter(e => !['essay','oral','practical','timed_task'].includes(e.type));
+                                          const proctorCE = ce.filter(e => e.type === 'essay');
+                                          const practE = ce.filter(e => ['oral','practical','timed_task'].includes(e.type));
+                                          const passS = async (sx, lb) => {
+                                            if (!confirm(`確定要讓 ${emp.name}「${cat.name} - ${lb}」直接通過嗎？`)) return;
+                                            const fs = await getDoc(doc(db, 'employees', emp.id)); const fd = fs.exists() ? fs.data() : {};
+                                            const nr = { ...(fd.examRecords || {}) };
+                                            for (const ex of sx) { nr[ex.id] = { ...(typeof nr[ex.id] === 'object' ? nr[ex.id] : {}), status: 'passed', timestamp: Date.now(), title: ex.title, approver: currentUserData?.name || 'admin', score: ex.pointValue ?? 10, pointValue: ex.pointValue ?? 10, mistakes: nr[ex.id]?.mistakes || 0 }; }
+                                            const ca = { ...(fd.categoryAttempts || {}) }; if (ca[cat.id]) { delete ca[cat.id].timedRetestRequested; delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].practicalRetestRequested; }
+                                            await updateDoc(doc(db, 'employees', emp.id), { examRecords: nr, categoryAttempts: ca }); showToast(`✅ ${emp.name}「${cat.name} - ${lb}」已通過！`);
+                                          };
+                                          return (
+                                            <div key={cat.id} className="bg-white p-3 rounded-lg">
+                                              <p className="text-xs font-black text-gray-700 mb-2">{cat.name}</p>
+                                              <div className="flex flex-wrap gap-1.5">
+                                                <button onClick={() => passS(ce, '全部')} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-600 hover:bg-green-200">✅ 全部</button>
+                                                {timedE.length > 0 && <button onClick={() => passS(timedE, '電腦測驗')} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100">💻 電腦測驗</button>}
+                                                {proctorCE.length > 0 && <button onClick={() => passS(proctorCE, '考官電腦測驗')} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100">📝 考官電腦</button>}
+                                                {practE.length > 0 && <button onClick={() => passS(practE, '考官實作測驗')} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-600 hover:bg-purple-100">🎯 考官實作</button>}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -5417,82 +5514,74 @@ export default function App() {
                       <p className="text-[10px] text-gray-400">選擇員工和分類，可重置已通過的考試讓員工重新作答</p>
                     </div>
                   </div>
-                  {employees.filter(e => e.examRecords && Object.keys(e.examRecords).length > 0).map((emp) => (
-                    <div key={emp.id} className="mb-3 bg-[#F7F8FA] p-4 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
-                        <span className="text-[10px] text-gray-400">{emp.store} · {emp.role}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {categories.map((cat) => {
-                          const catExams = exams.filter(e => e.categoryId === cat.id);
-                          const hasRecords = catExams.some(e => emp.examRecords?.[e.id]);
-                          if (!hasRecords) return null;
-                          const allPassed = catExams.every(e => { const r = emp.examRecords?.[e.id]; return r?.status === 'passed' || r === 'passed'; });
-                          const proctorComputerTypes = ['essay'];
-                          const proctorPracticalTypes = ['oral', 'practical', 'timed_task'];
-                          const catProctorComputer = catExams.filter(e => proctorComputerTypes.includes(e.type));
-                          const catProctorPractical = catExams.filter(e => proctorPracticalTypes.includes(e.type));
-                          const hasProctorComputerRecords = catProctorComputer.some(e => emp.examRecords?.[e.id]?.status === 'passed');
-                          const hasProctorPracticalRecords = catProctorPractical.some(e => emp.examRecords?.[e.id]?.status === 'passed');
-                          return (
-                            <div key={cat.id} className="flex flex-wrap gap-1">
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`確定要重置 ${emp.name} 的「${cat.name}」所有考試紀錄嗎？`)) return;
-                                  const freshSnap = await getDoc(doc(db, 'employees', emp.id));
-                                  const freshData = freshSnap.exists() ? freshSnap.data() : {};
-                                  const newRecords = { ...(freshData.examRecords || {}) };
-                                  catExams.forEach(e => { delete newRecords[e.id]; });
-                                  const ca = { ...(freshData.categoryAttempts || {}) };
-                                  if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; delete ca[cat.id].timedRetestRequested; delete ca[cat.id].practicalRetestRequested; }
-                                  await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
-                                  showToast(`已重置 ${emp.name}「${cat.name}」的考試紀錄`);
-                                }}
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${allPassed ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-500' : 'bg-orange-100 text-orange-500 hover:bg-red-100 hover:text-red-500'}`}
-                              >
-                                {allPassed ? '✅' : '⏳'} {cat.name}（全部）
-                              </button>
-                              {hasProctorComputerRecords && (
-                                <button
-                                  onClick={async () => {
-                                    if (!confirm(`確定要重置 ${emp.name} 的「${cat.name} - 考官電腦測驗」紀錄嗎？`)) return;
-                                    const freshSnap2 = await getDoc(doc(db, 'employees', emp.id));
-                                    const freshData2 = freshSnap2.exists() ? freshSnap2.data() : {};
-                                    const newRecords = { ...(freshData2.examRecords || {}) };
-                                    catProctorComputer.forEach(e => { delete newRecords[e.id]; });
-                                    const ca = { ...(freshData2.categoryAttempts || {}) };
-                                    if (ca[cat.id]) { delete ca[cat.id].proctorRetestRequested; }
-                                    await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords, categoryAttempts: ca });
-                                    showToast(`已重置 ${emp.name}「${cat.name} - 考官電腦測驗」`);
-                                  }}
-                                  className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-500 hover:bg-red-100 hover:text-red-500 transition-colors"
-                                >
-                                  📝 電腦測驗
-                                </button>
-                              )}
-                              {hasProctorPracticalRecords && (
-                                <button
-                                  onClick={async () => {
-                                    if (!confirm(`確定要重置 ${emp.name} 的「${cat.name} - 考官實作測驗」紀錄嗎？`)) return;
-                                    const freshSnap3 = await getDoc(doc(db, 'employees', emp.id));
-                                    const freshData3 = freshSnap3.exists() ? freshSnap3.data() : {};
-                                    const newRecords = { ...(freshData3.examRecords || {}) };
-                                    catProctorPractical.forEach(e => { delete newRecords[e.id]; });
-                                    await updateDoc(doc(db, 'employees', emp.id), { examRecords: newRecords });
-                                    showToast(`已重置 ${emp.name}「${cat.name} - 考官實作測驗」`);
-                                  }}
-                                  className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-500 hover:bg-red-100 hover:text-red-500 transition-colors"
-                                >
-                                  🎯 實作測驗
-                                </button>
-                              )}
+                  {(() => {
+                    const resetEmps = employees.filter(e => e.examRecords && Object.keys(e.examRecords).length > 0);
+                    const resetStoreGroups = {};
+                    resetEmps.forEach(emp => {
+                      const store = emp.store || '未分配門店';
+                      if (!resetStoreGroups[store]) resetStoreGroups[store] = [];
+                      resetStoreGroups[store].push(emp);
+                    });
+                    const resetStoreNames = Object.keys(resetStoreGroups).sort();
+                    if (resetEmps.length === 0) return <div className="text-center py-6 text-gray-400 text-xs font-bold">目前沒有考試紀錄</div>;
+                    return resetStoreNames.map(storeName => {
+                      const storeEmps = resetStoreGroups[storeName];
+                      return (
+                        <div key={storeName} className="mb-3">
+                          <button onClick={() => setExpandedResetStore(expandedResetStore === storeName ? null : storeName)} className="w-full flex items-center justify-between bg-red-50 px-4 py-2.5 rounded-xl hover:bg-red-100 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-red-500">🏪 {storeName}</span>
+                              <span className="text-[10px] text-gray-400">{storeEmps.length} 人</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                            <ChevronRight c={`w-4 h-4 text-red-400 transition-transform ${expandedResetStore === storeName ? 'rotate-90' : ''}`} />
+                          </button>
+                          {expandedResetStore === storeName && storeEmps.map(emp => (
+                            <div key={emp.id} className="mt-1 bg-[#F7F8FA] rounded-xl overflow-hidden ml-2">
+                              <button onClick={() => setExpandedResetEmpId(expandedResetEmpId === emp.id ? null : emp.id)} className="w-full flex items-center justify-between p-3 hover:bg-gray-100">
+                                <span className="text-sm font-bold text-[#1A1A1A]">{emp.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-400">{emp.role}</span>
+                                  <ChevronRight c={`w-3.5 h-3.5 text-gray-400 transition-transform ${expandedResetEmpId === emp.id ? 'rotate-90' : ''}`} />
+                                </div>
+                              </button>
+                              {expandedResetEmpId === emp.id && <div className="px-3 pb-3 space-y-2">
+                                {categories.map((cat) => {
+                                  const catExams = exams.filter(e => e.categoryId === cat.id);
+                                  const hasRecords = catExams.some(e => emp.examRecords?.[e.id]);
+                                  if (!hasRecords) return null;
+                                  const timedE = catExams.filter(e => !['essay','oral','practical','timed_task'].includes(e.type));
+                                  const proctorCE = catExams.filter(e => e.type === 'essay');
+                                  const practE = catExams.filter(e => ['oral','practical','timed_task'].includes(e.type));
+                                  const hasTimedRec = timedE.some(e => emp.examRecords?.[e.id]);
+                                  const hasProctorCRec = proctorCE.some(e => emp.examRecords?.[e.id]);
+                                  const hasPractRec = practE.some(e => emp.examRecords?.[e.id]);
+                                  const resetS = async (sx, lb, flags) => {
+                                    if (!confirm(`確定要重置 ${emp.name}「${cat.name} - ${lb}」嗎？`)) return;
+                                    const fs2 = await getDoc(doc(db, 'employees', emp.id)); const fd2 = fs2.exists() ? fs2.data() : {};
+                                    const nr = { ...(fd2.examRecords || {}) }; sx.forEach(e => { delete nr[e.id]; });
+                                    const ca = { ...(fd2.categoryAttempts || {}) }; if (ca[cat.id] && flags) { flags.forEach(f => delete ca[cat.id][f]); }
+                                    await updateDoc(doc(db, 'employees', emp.id), { examRecords: nr, categoryAttempts: ca });
+                                    showToast(`已重置 ${emp.name}「${cat.name} - ${lb}」`);
+                                  };
+                                  return (
+                                    <div key={cat.id} className="bg-white p-3 rounded-lg">
+                                      <p className="text-xs font-black text-gray-700 mb-2">{cat.name}</p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        <button onClick={() => resetS(catExams, '全部', ['timedRetestRequested','proctorRetestRequested','practicalRetestRequested'])} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-500 hover:bg-red-200 transition-colors">🗑 全部</button>
+                                        {hasTimedRec && <button onClick={() => resetS(timedE, '電腦測驗', ['timedRetestRequested'])} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-500 hover:bg-red-100 hover:text-red-500 transition-colors">💻 電腦測驗</button>}
+                                        {hasProctorCRec && <button onClick={() => resetS(proctorCE, '考官電腦測驗', ['proctorRetestRequested'])} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-500 hover:bg-red-100 hover:text-red-500 transition-colors">📝 考官電腦</button>}
+                                        {hasPractRec && <button onClick={() => resetS(practE, '考官實作測驗', ['practicalRetestRequested'])} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-500 hover:bg-red-100 hover:text-red-500 transition-colors">🎯 考官實作</button>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}
@@ -6769,6 +6858,29 @@ export default function App() {
               </button>
             </div>
 
+            {/* 申請重考功能開關 */}
+            <div className="pt-5 border-t border-gray-100">
+              <div className="flex items-center justify-between bg-[#F0F2F5] p-4 rounded-2xl">
+                <div>
+                  <p className="text-sm font-black text-[#1A1A1A]">申請重考功能</p>
+                  <p className="text-[10px] text-gray-400 font-bold mt-0.5">{appConfig.retakeRequiresApproval !== false ? '開啟中：考試沒過需申請重考' : '已關閉：考試沒過可自行重考'}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const newVal = appConfig.retakeRequiresApproval === false ? true : false;
+                    const newConfig = { ...appConfig, retakeRequiresApproval: newVal };
+                    setAppConfig(newConfig);
+                    await setDoc(doc(db, 'settings', 'appConfig'), { ...newConfig }, { merge: true });
+                    showToast(newVal ? '✅ 申請重考功能已開啟' : '🔓 已關閉，考生可自行重考');
+                  }}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${appConfig.retakeRequiresApproval !== false ? 'bg-[#2F7E5B]' : 'bg-gray-300'}`}
+                >
+                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${appConfig.retakeRequiresApproval !== false ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2 ml-1">關閉後考生可直接重考，系統會記錄每次考試時間供考官查看</p>
+            </div>
+
             {/* Logo 設定 */}
             <div className="pt-5 border-t border-gray-100">
               <label className="text-[11px] font-bold text-gray-500 block mb-3 ml-1">系統 Logo 圖示</label>
@@ -6846,13 +6958,12 @@ export default function App() {
       {!canEdit && timedSectionStarted && examStartTime && !examTimeUp && typeof document !== 'undefined' && ReactDOM.createPortal(
         <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#EBF2FF] px-4 py-3 shadow-lg border-b-2 border-blue-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
           <span className="text-sm font-black text-[#3B82F6]">💻 電腦測驗｜考官：{selectedProctor}</span>
-          <div className="flex items-center gap-2">
-            {examTimeRemaining !== null && (
-              <span className={`text-sm font-black px-4 py-1.5 rounded-full ${examTimeRemaining < 60000 ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-[#3B82F6]'}`}>
-                ⏱ {Math.floor(examTimeRemaining / 60000)}:{String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}
-              </span>
-            )}
-          </div>
+          <span className={`text-sm font-black px-4 py-1.5 rounded-full shrink-0 ${examTimeRemaining !== null && examTimeRemaining < 60000 ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-[#3B82F6]'}`}>
+            {examTimeRemaining !== null
+              ? `⏱ ${Math.floor(examTimeRemaining / 60000)}:${String(Math.floor((examTimeRemaining % 60000) / 1000)).padStart(2, '0')}`
+              : `⏱ ${Math.floor((Date.now() - (examStartTime || Date.now())) / 60000)}:${String(Math.floor(((Date.now() - (examStartTime || Date.now())) % 60000) / 1000)).padStart(2, '0')}`
+            }
+          </span>
         </div>,
         document.body
       )}
@@ -6860,11 +6971,15 @@ export default function App() {
       {!canEdit && proctorSectionStarted && proctorSectionStartTime && !proctorTimeUp && typeof document !== 'undefined' && ReactDOM.createPortal(
         <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between bg-[#FCEEEA] px-4 py-3 shadow-lg border-b-2 border-orange-300" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
           <span className="text-sm font-black text-[#D85E38]">📝 考官電腦測驗｜考官：{selectedProctor}</span>
-          {proctorTimeRemaining !== null && (
-            <span className={`text-sm font-black px-4 py-1.5 rounded-full ${proctorTimeUp ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-white text-[#D85E38]'}`}>
+          {proctorTimeRemaining !== null ? (
+            <span className={`text-sm font-black px-4 py-1.5 rounded-full bg-white text-[#D85E38]`}>
               ⏱ {Math.floor(proctorTimeRemaining / 60000)}:{String(Math.floor((proctorTimeRemaining % 60000) / 1000)).padStart(2, '0')}
             </span>
-          )}
+          ) : proctorSectionStartTime ? (
+            <span className="text-sm font-black px-4 py-1.5 rounded-full bg-white text-[#D85E38]">
+              ⏱ {Math.floor((Date.now() - proctorSectionStartTime) / 60000)}:{String(Math.floor(((Date.now() - proctorSectionStartTime) % 60000) / 1000)).padStart(2, '0')}
+            </span>
+          ) : null}
         </div>,
         document.body
       )}
