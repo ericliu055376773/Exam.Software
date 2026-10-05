@@ -3085,6 +3085,28 @@ export default function App() {
                                       </div>
                                     )}
                                   </button>
+                                  {!canEdit && (() => {
+                                    const ca = currentUserData?.categoryAttempts || {};
+                                    const hist = ca[activeCategoryId]?.timedRetakeHistory || [];
+                                    if (hist.length === 0) return null;
+                                    return (
+                                      <div className="mx-3 mt-1 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                                        <button onClick={(e) => { const el = e.currentTarget.nextSibling; if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }} className="w-full flex items-center justify-between p-2.5 text-[10px] font-bold text-gray-500 hover:bg-gray-100">
+                                          <span>📋 考試紀錄（共 {hist.length} 次）</span>
+                                          <ChevronRight c="w-3 h-3 text-gray-400 rotate-90" />
+                                        </button>
+                                        <div style={{ display: 'none' }} className="px-2.5 pb-2.5 space-y-1">
+                                          {hist.map((h, hi) => (
+                                            <div key={hi} className="flex items-center justify-between bg-white p-2 rounded-lg text-[10px]">
+                                              <span className="font-bold text-gray-600">第{h.attempt}次</span>
+                                              <span className="text-gray-400">{new Date(h.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                              <span className="text-gray-400">{h.approver}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                   {!allTimedPassed && showTimedSection === 'timed' && (
                                     <div className="bg-white p-3 space-y-4">
                                       {!canEdit && !timedSectionStarted && !anyTimedFailed ? (
@@ -4491,6 +4513,28 @@ export default function App() {
                                       </div>
                                     )}
                                   </button>
+                                  {!canEdit && (() => {
+                                    const ca = currentUserData?.categoryAttempts || {};
+                                    const hist = ca[activeCategoryId]?.proctorRetakeHistory || [];
+                                    if (hist.length === 0) return null;
+                                    return (
+                                      <div className="mx-3 mt-1 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                                        <button onClick={(e) => { const el = e.currentTarget.nextSibling; if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }} className="w-full flex items-center justify-between p-2.5 text-[10px] font-bold text-gray-500 hover:bg-gray-100">
+                                          <span>📋 考試紀錄（共 {hist.length} 次）</span>
+                                          <ChevronRight c="w-3 h-3 text-gray-400 rotate-90" />
+                                        </button>
+                                        <div style={{ display: 'none' }} className="px-2.5 pb-2.5 space-y-1">
+                                          {hist.map((h, hi) => (
+                                            <div key={hi} className="flex items-center justify-between bg-white p-2 rounded-lg text-[10px]">
+                                              <span className="font-bold text-gray-600">第{h.attempt}次</span>
+                                              <span className="text-gray-400">{new Date(h.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                              <span className="text-gray-400">{h.approver}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                   {!allProctorComputerPassed && showProctorSection && (() => {
                                     const anyPendingProctor = proctorComputerExams.some((e) => currentUserData?.examRecords?.[e.id]?.status === 'pending_proctor');
                                     return (
@@ -5099,6 +5143,28 @@ export default function App() {
                                       </div>
                                     )}
                                   </button>
+                                  {!canEdit && (() => {
+                                    const ca = currentUserData?.categoryAttempts || {};
+                                    const hist = ca[activeCategoryId]?.practicalRetakeHistory || [];
+                                    if (hist.length === 0) return null;
+                                    return (
+                                      <div className="mx-3 mt-1 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                                        <button onClick={(e) => { const el = e.currentTarget.nextSibling; if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }} className="w-full flex items-center justify-between p-2.5 text-[10px] font-bold text-gray-500 hover:bg-gray-100">
+                                          <span>📋 考試紀錄（共 {hist.length} 次）</span>
+                                          <ChevronRight c="w-3 h-3 text-gray-400 rotate-90" />
+                                        </button>
+                                        <div style={{ display: 'none' }} className="px-2.5 pb-2.5 space-y-1">
+                                          {hist.map((h, hi) => (
+                                            <div key={hi} className="flex items-center justify-between bg-white p-2 rounded-lg text-[10px]">
+                                              <span className="font-bold text-gray-600">第{h.attempt}次</span>
+                                              <span className="text-gray-400">{new Date(h.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                              <span className="text-gray-400">{h.approver}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                   {!allPracticalPassed && showTimedSection === 'practical' && (
                                     <div className="bg-white p-3 space-y-4">
                                       {!canEdit && !selectedProctor && !anyPracticalFailed ? (
